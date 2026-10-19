@@ -12,16 +12,6 @@
       <Filter>system</Filter>
     </ClCompile>
     <ClCompile Include="Game.cpp" />
-    <ClCompile Include="ScoreCategory.cpp" />
-    <ClCompile Include="CpuPlayer.cpp" />
-    <ClCompile Include="DiceRound.cpp" />
-    <ClCompile Include="DiceInputController.cpp" />
-    <ClCompile Include="Dice.cpp" />
-    <ClCompile Include="ScoreBoardView.cpp" />
-    <ClCompile Include="ScoreSelectController.cpp" />
-    <ClCompile Include="ResultView.cpp" />
-    <ClCompile Include="Title.cpp" />
-    <ClCompile Include="Explanation.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
@@ -29,15 +19,5 @@
       <Filter>system</Filter>
     </ClInclude>
     <ClInclude Include="Game.h" />
-    <ClInclude Include="ScoreCategory.h" />
-    <ClInclude Include="CpuPlayer.h" />
-    <ClInclude Include="DiceRound.h" />
-    <ClInclude Include="DiceInputController.h" />
-    <ClInclude Include="Dice.h" />
-    <ClInclude Include="ScoreBoardView.h" />
-    <ClInclude Include="ScoreSelectController.h" />
-    <ClInclude Include="ResultView.h" />
-    <ClInclude Include="Title.h" />
-    <ClInclude Include="Explanation.h" />
   </ItemGroup>
 </Project>
