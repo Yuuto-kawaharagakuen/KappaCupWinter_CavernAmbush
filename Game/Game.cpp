@@ -1,5 +1,7 @@
 ﻿#include "stdafx.h"
 #include "Game.h"
+#include "Player.h"
+#include "BackGround.h"
 
 Game::Game()
 {
@@ -7,15 +9,14 @@ Game::Game()
 
 Game::~Game()
 {
+	DeleteGO(m_player);
+	DeleteGO(m_backGround);
 }
 
 bool Game::Start()
 {
-	g_camera3D->SetPosition(Vector3(0.0f, 200.0f, -400.0f));
-	g_camera3D->SetTarget(Vector3(0.0f, 100.0f, 0.0f));
-	g_camera3D->SetUp(Vector3(0.0f, 1.0f, 0.0f));
-	g_camera3D->SetNear(1.0f);
-	g_camera3D->SetFar(20000.0f);
+	m_backGround = NewGO<BackGround>(0, "backGround");
+	m_player = NewGO<Player>(0, "player");
 
 	OutputDebugStringW(L"---- CAVERN AMBUSH : Game Start ----\n");
 	return true;
