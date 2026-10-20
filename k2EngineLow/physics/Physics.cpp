@@ -34,14 +34,11 @@ namespace nsK2EngineLow {
 			Vector3 rayEnd;
 			bool isHit = false;
 			float hitFraction = 1.0f;
-			void* hitUserPointer = nullptr;
-
-			btScalar addSingleResult(btCollisionWorld::LocalRayResult& rayResult, bool normalInWorldSpace) override
+			btScalar	addSingleResult(btCollisionWorld::LocalRayResult& rayResult, bool normalInWorldSpace) override			
 			{
 				if (rayResult.m_hitFraction < hitFraction) {
+					// ‚±‚¿‚ç‚Ì•û‚ª‹ß‚¢B
 					hitPos.Lerp(rayResult.m_hitFraction, rayStart, rayEnd);
-					hitFraction = rayResult.m_hitFraction; // 
-					hitUserPointer = rayResult.m_collisionObject->getUserPointer(); 
 				}
 				isHit = true;
 				return rayResult.m_hitFraction;
@@ -65,7 +62,7 @@ namespace nsK2EngineLow {
 		);
 		return result.isHit;
 	}
-	bool PhysicsWorld::RayTest(const Vector3& rayStart, const Vector3& rayEnd, Vector3& hitPos, void** outHitUserPointer) const
+	bool PhysicsWorld::RayTest(const Vector3& rayStart, const Vector3& rayEnd, Vector3& hitPos) const
 	{
 		btVector3 start, end;
 		start.setValue(rayStart.x, rayStart.y, rayStart.z);
@@ -76,7 +73,6 @@ namespace nsK2EngineLow {
 		m_dynamicWorld->rayTest(start, end, cb);
 		if (cb.isHit) {
 			hitPos = cb.hitPos;
-			if (outHitUserPointer) *outHitUserPointer = cb.hitUserPointer; 
 		}
 		return cb.isHit;
 	}
