@@ -18,7 +18,6 @@ bool Game::Start()
 	m_backGround = NewGO<BackGround>(0, "backGround");
 	m_player = NewGO<Player>(0, "player");
 
-	OutputDebugStringW(L"---- CAVERN AMBUSH : Game Start ----\n");
 	return true;
 }
 

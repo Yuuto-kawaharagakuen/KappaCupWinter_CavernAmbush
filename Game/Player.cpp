@@ -25,7 +25,7 @@ Player::~Player()
 bool Player::Start()
 {
 	m_charaCon.Init(CAPSULE_RADIUS, CAPSULE_HEIGHT, m_position);
-	g_camera3D->SetNear(1.0f);
+	g_camera3D->SetNear(0.5f);
 	g_camera3D->SetFar(20000.0f);
 	UpdateCamera();
 	return true;
