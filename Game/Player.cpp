@@ -7,11 +7,17 @@ namespace
 	const float CAPSULE_HEIGHT = 110.0f;
 	const float EYE_HEIGHT = 160.0f;
 	const float WALK_SPEED = 400.0f;
+	const float DIVE_SPEED = 500.0f;
 	const float GRAVITY = 980.0f;
 	const float YAW_SPEED = 150.0f;
 	const float PITCH_SPEED = 100.0f;
 	const float PITCH_LIMIT = 80.0f;
 	const float STICK_DEADZONE = 0.15f;
+	const float TPS_TARGET_HEIGHT = 50.0f;
+	const float TPS_DISTANCE = 300.0f;
+	const float TPS_HEIGHT = 50.0f;
+	const float CAMERA_BLEND_TIME = 0.8f;
+	const float LOOK_DISTANCE = 100.0f;
 }
 
 Player::Player()
@@ -27,15 +33,32 @@ bool Player::Start()
 	m_charaCon.Init(CAPSULE_RADIUS, CAPSULE_HEIGHT, m_position);
 	g_camera3D->SetNear(0.5f);
 	g_camera3D->SetFar(20000.0f);
+	g_k2Engine->SetDrawVectorEnable();
 	UpdateCamera();
 	return true;
 }
 
 void Player::Update()
 {
+	UpdateState();
 	Rotate();
 	Move();
 	UpdateCamera();
+}
+
+void Player::UpdateState()
+{
+	if (IsSwitching()) {
+		return;
+	}
+	if (g_pad[0]->IsTrigger(enButtonB)) {
+		if (m_state == enState_Surface) {
+			m_state = enState_Dive;
+		}
+		else {
+			m_state = enState_Surface;
+		}
+	}
 }
 
 void Player::Rotate()
@@ -46,7 +69,7 @@ void Player::Rotate()
 	if (fabsf(stickX) < STICK_DEADZONE) {
 		stickX = 0.0f;
 	}
-	if (fabsf(stickY) < STICK_DEADZONE) {
+	if (fabsf(stickY) < STICK_DEADZONE || IsDiving()) {
 		stickY = 0.0f;
 	}
 
@@ -71,12 +94,16 @@ void Player::Move()
 	float stickY = g_pad[0]->GetLStickYF();
 
 	Vector3 inputDir = m_forward * stickY + m_right * stickX;
+	if (IsSwitching()) {
+		inputDir = Vector3::Zero;
+	}
 	if (inputDir.LengthSq() > 1.0f) {
 		inputDir.Normalize();
 	}
 
-	m_moveSpeed.x = inputDir.x * WALK_SPEED;
-	m_moveSpeed.z = inputDir.z * WALK_SPEED;
+	float speed = IsDiving() ? DIVE_SPEED : WALK_SPEED;
+	m_moveSpeed.x = inputDir.x * speed;
+	m_moveSpeed.z = inputDir.z * speed;
 
 	if (m_charaCon.IsOnGround()) {
 		m_moveSpeed.y = 0.0f;
@@ -88,15 +115,46 @@ void Player::Move()
 
 void Player::UpdateCamera()
 {
+	float deltaTime = g_gameTime->GetFrameDeltaTime();
+	float blendTarget = IsDiving() ? 1.0f : 0.0f;
+	float blendStep = deltaTime / CAMERA_BLEND_TIME;
+	if (m_cameraBlend < blendTarget) {
+		m_cameraBlend += blendStep;
+		if (m_cameraBlend > blendTarget) {
+			m_cameraBlend = blendTarget;
+		}
+	}
+	else if (m_cameraBlend > blendTarget) {
+		m_cameraBlend -= blendStep;
+		if (m_cameraBlend < blendTarget) {
+			m_cameraBlend = blendTarget;
+		}
+	}
+
 	float pitchRad = Math::DegToRad(m_pitch);
 	Vector3 lookDir = m_forward * cosf(pitchRad) + Vector3::Up * sinf(pitchRad);
 
-	Vector3 eyePos = m_position;
-	eyePos.y += EYE_HEIGHT;
+	Vector3 fpsPos = m_position;
+	fpsPos.y += EYE_HEIGHT;
+	Vector3 fpsTarget = fpsPos + lookDir * LOOK_DISTANCE;
 
-	g_camera3D->SetPosition(eyePos);
-	g_camera3D->SetTarget(eyePos + lookDir * 100.0f);
+	Vector3 tpsTarget = m_position;
+	tpsTarget.y += TPS_TARGET_HEIGHT;
+	Vector3 tpsPos = tpsTarget - m_forward * TPS_DISTANCE + Vector3::Up * TPS_HEIGHT;
+
+	float t = m_cameraBlend * m_cameraBlend * (3.0f - 2.0f * m_cameraBlend);
+	Vector3 cameraPos;
+	cameraPos.Lerp(t, fpsPos, tpsPos);
+	Vector3 cameraTarget;
+	cameraTarget.Lerp(t, fpsTarget, tpsTarget);
+
+	g_camera3D->SetPosition(cameraPos);
+	g_camera3D->SetTarget(cameraTarget);
 	g_camera3D->SetUp(Vector3::Up);
+
+	if (IsDiving()) {
+		g_k2Engine->DrawVector(m_forward * 100.0f, m_position, "player");
+	}
 }
 
 void Player::Render(RenderContext& rc)

@@ -2,7 +2,7 @@
 using namespace std;
 
 class Player;
-class BackGround;
+class Stage;
 
 class Game : public IGameObject
 {
@@ -15,5 +15,5 @@ public:
 
 private:
 	Player* m_player = nullptr;
-	BackGround* m_backGround = nullptr;
+	Stage* m_stage = nullptr;
 };
