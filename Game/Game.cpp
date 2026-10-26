@@ -5,6 +5,8 @@
 
 Game::Game()
 {
+	//PhysicsWorld::GetInstance()->EnableDrawDebugWireFrame();
+
 }
 
 Game::~Game()
