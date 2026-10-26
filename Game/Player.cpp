@@ -1,5 +1,6 @@
 ﻿#include "stdafx.h"
 #include "Player.h"
+#include "SandBullet.h"
 
 namespace
 {
@@ -18,6 +19,8 @@ namespace
 	const float TPS_HEIGHT = 50.0f;
 	const float CAMERA_BLEND_TIME = 0.8f;
 	const float LOOK_DISTANCE = 100.0f;
+	const float SHOT_INTERVAL = 0.2f;
+	const float MUZZLE_OFFSET = 40.0f;
 }
 
 Player::Player()
@@ -44,6 +47,51 @@ void Player::Update()
 	Rotate();
 	Move();
 	UpdateCamera();
+	Shoot();
+
+	if (m_state == enState_Surface) {
+		fontRender.SetText(L"一人称");
+		fontRender.SetPosition({ -800.0f,450.0f,0.0f });
+		fontRender.SetScale(2.2f);
+	}
+	else {
+		fontRender.SetText(L"三人称");
+		fontRender.SetPosition({ -800.0f,450.0f,0.0f });
+		fontRender.SetScale(2.2f);
+	}
+}
+
+Vector3 Player::GetLookDirection() const
+{
+	float pitchRad = Math::DegToRad(m_pitch);
+	return m_forward * cosf(pitchRad) + Vector3::Up * sinf(pitchRad);
+}
+
+bool Player::CanShoot() const
+{
+	return !IsDiving() && !IsSwitching();
+}
+
+void Player::Shoot()
+{
+	if (m_shotCooldown > 0.0f) {
+		m_shotCooldown -= g_gameTime->GetFrameDeltaTime();
+	}
+	if (!CanShoot() || m_shotCooldown > 0.0f) {
+		return;
+	}
+	if (!g_pad[0]->IsPress(enButtonRB2)) {
+		return;
+	}
+
+	Vector3 lookDir = GetLookDirection();
+	Vector3 muzzlePos = m_position;
+	muzzlePos.y += EYE_HEIGHT;
+	muzzlePos += lookDir * MUZZLE_OFFSET;
+
+	SandBullet* bullet = NewGO<SandBullet>(0, "sandBullet");
+	bullet->Init(muzzlePos, lookDir);
+	m_shotCooldown = SHOT_INTERVAL;
 }
 
 void Player::UpdateState()
@@ -131,8 +179,7 @@ void Player::UpdateCamera()
 		}
 	}
 
-	float pitchRad = Math::DegToRad(m_pitch);
-	Vector3 lookDir = m_forward * cosf(pitchRad) + Vector3::Up * sinf(pitchRad);
+	Vector3 lookDir = GetLookDirection();
 
 	Vector3 fpsPos = m_position;
 	fpsPos.y += EYE_HEIGHT;
@@ -159,4 +206,5 @@ void Player::UpdateCamera()
 
 void Player::Render(RenderContext& rc)
 {
+	fontRender.Draw(rc);
 }

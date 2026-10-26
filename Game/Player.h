@@ -39,9 +39,12 @@ public:
 	{
 		return m_cameraBlend != (IsDiving() ? 1.0f : 0.0f);
 	}
+	Vector3 GetLookDirection() const;
+	bool CanShoot() const;
 
 private:
 	void UpdateState();
+	void Shoot();
 	void Rotate();
 	void Move();
 	void UpdateCamera();
@@ -55,4 +58,8 @@ private:
 	float m_yaw = 0.0f;
 	float m_pitch = 0.0f;
 	float m_cameraBlend = 0.0f;
+	float m_shotCooldown = 0.0f;
+
+	FontRender fontRender;
+
 };

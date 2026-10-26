@@ -3,7 +3,7 @@
 
 namespace
 {
-	const Vector3 CAVE_AMBIENT = { 0.6f, 0.5f, 0.4f };
+	Vector3 CAVE_AMBIENT = { 0.6f, 0.5f, 0.4f };
 }
 
 Stage::Stage()

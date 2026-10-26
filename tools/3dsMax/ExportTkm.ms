@@ -1,10 +1,11 @@
 (
+	local args = maxOps.mxsCmdLineArgs
 	local scriptDir = getFilenamePath (getThisScriptFilename())
 	local projDir = pathConfig.normalizePath (scriptDir + "..\\..\\")
 	local k2Dir = "C:\\my\\02_Git\\01_k2Engine\\GameTemplate\\tools\\3dsMaxScripts\\sub\\"
-	local maxFile = projDir + "MaxData\\Stage1.max"
+	local maxFile = projDir + "MaxData\\" + args[#file]
 	local modelDir = projDir + "Game\\Assets\\modelData\\"
-	local exportNames = #("Floor_Stage1", "Wall_Stage1", "Gate_Stage1")
+	local exportNames = filterString args[#names] ","
 
 	global g_exportReport = createFile (projDir + "MaxData\\export_report.txt")
 
@@ -28,9 +29,8 @@
 	src = substituteString src "filePath = getSaveFileName caption:\"\" types: \" (*.tkm)|*.tkm|All Files (*.*)|*.*|\"" ""
 	src = substituteString src "ShellLaunch command arg" "()"
 	src = substituteString src "messageBox errorMessage" "format \"EXPORT ERROR: %\\n\" errorMessage to:g_exportReport"
-	format "SOURCE LENGTH: %\n" src.count to:g_exportReport
 	try (execute src) catch (format "EXECUTE ERROR: %\n" (getCurrentException()) to:g_exportReport)
-	format "STRUCT: %\n" (globalVars.get #TkmExporterForScript) to:g_exportReport
+	local exporterDef = globalVars.get #TkmExporterForScript
 
 	for nm in exportNames do
 	(
@@ -42,7 +42,6 @@
 		else
 		(
 			local outPath = modelDir + nm + ".tkm"
-			local exporterDef = globalVars.get #TkmExporterForScript
 			local exporter = exporterDef()
 			exporter.SaveTkm #(n) outPath false
 			format "EXPORTED: %\n" outPath to:g_exportReport
