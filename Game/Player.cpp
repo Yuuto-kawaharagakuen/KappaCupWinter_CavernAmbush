@@ -50,12 +50,12 @@ void Player::Update()
 	Shoot();
 
 	if (m_state == enState_Surface) {
-		fontRender.SetText(L"一人称");
+		fontRender.SetText(L"FPS");
 		fontRender.SetPosition({ -800.0f,450.0f,0.0f });
 		fontRender.SetScale(2.2f);
 	}
 	else {
-		fontRender.SetText(L"三人称");
+		fontRender.SetText(L"TPS");
 		fontRender.SetPosition({ -800.0f,450.0f,0.0f });
 		fontRender.SetScale(2.2f);
 	}
