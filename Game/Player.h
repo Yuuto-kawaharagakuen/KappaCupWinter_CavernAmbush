@@ -41,9 +41,19 @@ public:
 	}
 	Vector3 GetLookDirection() const;
 	bool CanShoot() const;
+	int GetAmmo() const
+	{
+		return m_ammo;
+	}
+	int GetMaxAmmo() const;
+	bool IsReloading() const
+	{
+		return m_isReloading;
+	}
 
 private:
 	void UpdateState();
+	void UpdateReload();
 	void Shoot();
 	void Rotate();
 	void Move();
@@ -59,6 +69,9 @@ private:
 	float m_pitch = 0.0f;
 	float m_cameraBlend = 0.0f;
 	float m_shotCooldown = 0.0f;
+	int m_ammo = 0;
+	bool m_isReloading = false;
+	float m_reloadTimer = 0.0f;
 
 	FontRender fontRender;
 

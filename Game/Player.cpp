@@ -21,6 +21,8 @@ namespace
 	const float LOOK_DISTANCE = 100.0f;
 	const float SHOT_INTERVAL = 0.2f;
 	const float MUZZLE_OFFSET = 40.0f;
+	const int MAX_AMMO = 10;
+	const float RELOAD_INTERVAL = 0.15f;
 }
 
 Player::Player()
@@ -34,6 +36,7 @@ Player::~Player()
 bool Player::Start()
 {
 	m_charaCon.Init(CAPSULE_RADIUS, CAPSULE_HEIGHT, m_position);
+	m_ammo = MAX_AMMO;
 	g_camera3D->SetNear(0.5f);
 	g_camera3D->SetFar(20000.0f);
 	g_k2Engine->SetDrawVectorEnable();
@@ -47,6 +50,7 @@ void Player::Update()
 	Rotate();
 	Move();
 	UpdateCamera();
+	UpdateReload();
 	Shoot();
 
 	if (m_state == enState_Surface) {
@@ -69,7 +73,38 @@ Vector3 Player::GetLookDirection() const
 
 bool Player::CanShoot() const
 {
-	return !IsDiving() && !IsSwitching();
+	return !IsDiving() && !IsSwitching() && m_ammo > 0;
+}
+
+int Player::GetMaxAmmo() const
+{
+	return MAX_AMMO;
+}
+
+void Player::UpdateReload()
+{
+	if (m_isReloading) {
+		if (!IsDiving()) {
+			m_isReloading = false;
+			m_reloadTimer = 0.0f;
+			return;
+		}
+		m_reloadTimer += g_gameTime->GetFrameDeltaTime();
+		while (m_reloadTimer >= RELOAD_INTERVAL && m_ammo < MAX_AMMO) {
+			m_reloadTimer -= RELOAD_INTERVAL;
+			m_ammo++;
+		}
+		if (m_ammo >= MAX_AMMO) {
+			m_isReloading = false;
+			m_reloadTimer = 0.0f;
+		}
+		return;
+	}
+
+	if (IsDiving() && !IsSwitching() && m_ammo < MAX_AMMO && g_pad[0]->IsTrigger(enButtonX)) {
+		m_isReloading = true;
+		m_reloadTimer = 0.0f;
+	}
 }
 
 void Player::Shoot()
@@ -92,6 +127,7 @@ void Player::Shoot()
 	SandBullet* bullet = NewGO<SandBullet>(0, "sandBullet");
 	bullet->Init(muzzlePos, lookDir);
 	m_shotCooldown = SHOT_INTERVAL;
+	m_ammo--;
 }
 
 void Player::UpdateState()

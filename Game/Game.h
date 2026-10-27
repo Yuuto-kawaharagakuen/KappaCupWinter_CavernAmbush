@@ -3,6 +3,7 @@ using namespace std;
 
 class Player;
 class Stage;
+class PlayerUI;
 
 class Game : public IGameObject
 {
@@ -16,4 +17,5 @@ public:
 private:
 	Player* m_player = nullptr;
 	Stage* m_stage = nullptr;
+	PlayerUI* m_playerUI = nullptr;
 };

@@ -225,6 +225,7 @@
   <ItemGroup>
     <ClCompile Include="Stage.cpp" />
     <ClCompile Include="SandBullet.cpp" />
+    <ClCompile Include="PlayerUI.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="main.cpp" />
@@ -238,6 +239,7 @@
   <ItemGroup>
     <ClInclude Include="Stage.h" />
     <ClInclude Include="SandBullet.h" />
+    <ClInclude Include="PlayerUI.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="stdafx.h" />
