@@ -58,8 +58,10 @@ private:
 	void Rotate();
 	void Move();
 	void UpdateCamera();
+	void UpdateGun();
 
 	CharacterController m_charaCon;
+	ModelRender m_gunModel;
 	EnState m_state = enState_Surface;
 	Vector3 m_position = Vector3::Zero;
 	Vector3 m_moveSpeed = Vector3::Zero;
@@ -72,6 +74,7 @@ private:
 	int m_ammo = 0;
 	bool m_isReloading = false;
 	float m_reloadTimer = 0.0f;
+	bool m_isGunVisible = true;
 
 	FontRender fontRender;
 

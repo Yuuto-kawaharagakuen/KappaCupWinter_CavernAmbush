@@ -23,6 +23,7 @@ namespace
 	const float MUZZLE_OFFSET = 40.0f;
 	const int MAX_AMMO = 10;
 	const float RELOAD_INTERVAL = 0.15f;
+	const Vector3 GUN_OFFSET = { 10.0f, -10.0f, 22.0f };
 }
 
 Player::Player()
@@ -40,7 +41,10 @@ bool Player::Start()
 	g_camera3D->SetNear(0.5f);
 	g_camera3D->SetFar(20000.0f);
 	g_k2Engine->SetDrawVectorEnable();
+	m_gunModel.Init("Assets/modelData/Gun.tkm");
+	m_gunModel.SetShadowCasterFlag(false);
 	UpdateCamera();
+	UpdateGun();
 	return true;
 }
 
@@ -50,6 +54,7 @@ void Player::Update()
 	Rotate();
 	Move();
 	UpdateCamera();
+	UpdateGun();
 	UpdateReload();
 	Shoot();
 
@@ -240,7 +245,40 @@ void Player::UpdateCamera()
 	}
 }
 
+void Player::UpdateGun()
+{
+	m_isGunVisible = !IsDiving() && !IsSwitching();
+	if (!m_isGunVisible) {
+		return;
+	}
+
+	Quaternion yawRot;
+	yawRot.SetRotationDegY(m_yaw);
+	Quaternion pitchRot;
+	pitchRot.SetRotationDegX(-m_pitch);
+	Quaternion rotation;
+	rotation.Multiply(pitchRot, yawRot);
+
+	Vector3 right = Vector3::AxisX;
+	Vector3 up = Vector3::AxisY;
+	Vector3 forward = Vector3::AxisZ;
+	rotation.Apply(right);
+	rotation.Apply(up);
+	rotation.Apply(forward);
+
+	Vector3 gunPos = m_position;
+	gunPos.y += EYE_HEIGHT;
+	gunPos += right * GUN_OFFSET.x + up * GUN_OFFSET.y + forward * GUN_OFFSET.z;
+
+	m_gunModel.SetPosition(gunPos);
+	m_gunModel.SetRotation(rotation);
+	m_gunModel.Update();
+}
+
 void Player::Render(RenderContext& rc)
 {
+	if (m_isGunVisible) {
+		m_gunModel.Draw(rc);
+	}
 	fontRender.Draw(rc);
 }
