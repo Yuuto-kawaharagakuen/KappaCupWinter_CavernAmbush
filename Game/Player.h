@@ -50,8 +50,31 @@ public:
 	{
 		return m_isReloading;
 	}
+	int GetHp() const
+	{
+		return m_hp;
+	}
+	int GetMaxHp() const;
+	bool IsDead() const
+	{
+		return m_hp <= 0;
+	}
+	void Damage(int amount);
+	bool HitTest(const Vector3& start, const Vector3& end, float radius) const;
+	bool IsBodyPoint(const Vector3& point) const;
+	bool IsMoving() const
+	{
+		return m_isMoving;
+	}
+	bool ConsumeShotFlag()
+	{
+		bool isShot = m_isShot;
+		m_isShot = false;
+		return isShot;
+	}
 
 private:
+	void UpdateDamage();
 	void UpdateState();
 	void UpdateReload();
 	void Shoot();
@@ -59,9 +82,11 @@ private:
 	void Move();
 	void UpdateCamera();
 	void UpdateGun();
+	void UpdateMound();
 
 	CharacterController m_charaCon;
 	ModelRender m_gunModel;
+	ModelRender m_moundModel;
 	EnState m_state = enState_Surface;
 	Vector3 m_position = Vector3::Zero;
 	Vector3 m_moveSpeed = Vector3::Zero;
@@ -75,7 +100,20 @@ private:
 	bool m_isReloading = false;
 	float m_reloadTimer = 0.0f;
 	bool m_isGunVisible = true;
-
-	FontRender fontRender;
+	int m_hp = 1;
+	float m_invincibleTimer = 0.0f;
+	bool m_isMoving = false;
+	bool m_isShot = false;
+	float m_gunKick = 0.0f;
+	float m_gunBobPhase = 0.0f;
+	float m_gunBobWeight = 0.0f;
+	float m_gunRaise = 0.0f;
+	float m_gunSwayYaw = 0.0f;
+	float m_gunSwayPitch = 0.0f;
+	float m_lastYaw = 0.0f;
+	float m_lastPitch = 0.0f;
+	float m_moundPhase = 0.0f;
+	float m_moundMoveWeight = 0.0f;
+	bool m_isMoundVisible = false;
 
 };

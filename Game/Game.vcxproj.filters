@@ -15,6 +15,11 @@
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="Stage.cpp" />
     <ClCompile Include="SandBullet.cpp" />
+    <ClCompile Include="Fade.cpp" />
+    <ClCompile Include="GameOver.cpp" />
+    <ClCompile Include="EnemyBase.cpp" />
+    <ClCompile Include="EnemyBullet.cpp" />
+    <ClCompile Include="Soldier.cpp" />
     <ClCompile Include="PlayerUI.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -26,6 +31,12 @@
     <ClInclude Include="Player.h" />
     <ClInclude Include="Stage.h" />
     <ClInclude Include="SandBullet.h" />
+    <ClInclude Include="Fade.h" />
+    <ClInclude Include="GameOver.h" />
+    <ClInclude Include="EnemyBase.h" />
+    <ClInclude Include="EnemyBullet.h" />
+    <ClInclude Include="HitUtil.h" />
+    <ClInclude Include="Soldier.h" />
     <ClInclude Include="PlayerUI.h" />
   </ItemGroup>
 </Project>

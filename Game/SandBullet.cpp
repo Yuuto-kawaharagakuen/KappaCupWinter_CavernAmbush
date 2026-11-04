@@ -1,5 +1,7 @@
 ﻿#include "stdafx.h"
 #include "SandBullet.h"
+#include "EnemyBase.h"
+#include "PlayerUI.h"
 
 namespace
 {
@@ -7,6 +9,9 @@ namespace
 	const float BULLET_RANGE = 800.0f;
 	const float BULLET_RADIUS = 10.0f;
 	const char* const COLLISION_NAME = "player_bullet";
+	const char* const ENEMY_NAME = "enemy";
+	const int BULLET_DAMAGE = 10;
+	const char* const PLAYER_UI_NAME = "playerUI";
 }
 
 SandBullet::SandBullet()
@@ -54,7 +59,31 @@ void SandBullet::Update()
 	Vector3 next = m_position + m_direction * step;
 
 	Vector3 hitPos;
-	if (PhysicsWorld::GetInstance()->RayTest(m_position, next, hitPos)) {
+	bool isWallHit = PhysicsWorld::GetInstance()->RayTest(m_position, next, hitPos);
+	Vector3 end = isWallHit ? hitPos : next;
+
+	EnemyBase* hitEnemy = nullptr;
+	float nearestRate = 1.0f;
+	QueryGOs<EnemyBase>(ENEMY_NAME, [&](EnemyBase* enemy) {
+		float rate = 0.0f;
+		if (enemy->HitTest(m_position, end, BULLET_RADIUS, rate) && rate <= nearestRate) {
+			nearestRate = rate;
+			hitEnemy = enemy;
+		}
+		return true;
+	});
+
+	if (hitEnemy != nullptr) {
+		if (hitEnemy->Damage(BULLET_DAMAGE, m_direction)) {
+			PlayerUI* playerUI = FindGO<PlayerUI>(PLAYER_UI_NAME);
+			if (playerUI != nullptr) {
+				playerUI->NotifyHit(m_position + (end - m_position) * nearestRate, BULLET_DAMAGE, hitEnemy->IsDead());
+			}
+		}
+		OnHit();
+		return;
+	}
+	if (isWallHit) {
 		OnHit();
 		return;
 	}

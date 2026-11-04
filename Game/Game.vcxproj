@@ -225,6 +225,11 @@
   <ItemGroup>
     <ClCompile Include="Stage.cpp" />
     <ClCompile Include="SandBullet.cpp" />
+    <ClCompile Include="Fade.cpp" />
+    <ClCompile Include="GameOver.cpp" />
+    <ClCompile Include="EnemyBase.cpp" />
+    <ClCompile Include="EnemyBullet.cpp" />
+    <ClCompile Include="Soldier.cpp" />
     <ClCompile Include="PlayerUI.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Player.cpp" />
@@ -239,6 +244,12 @@
   <ItemGroup>
     <ClInclude Include="Stage.h" />
     <ClInclude Include="SandBullet.h" />
+    <ClInclude Include="Fade.h" />
+    <ClInclude Include="GameOver.h" />
+    <ClInclude Include="EnemyBase.h" />
+    <ClInclude Include="EnemyBullet.h" />
+    <ClInclude Include="HitUtil.h" />
+    <ClInclude Include="Soldier.h" />
     <ClInclude Include="PlayerUI.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="Player.h" />

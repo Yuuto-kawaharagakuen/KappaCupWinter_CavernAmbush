@@ -6,7 +6,7 @@
 ## 参考資料
 - 企画書: `08_笠井友斗_企画書_CAVERN_AMBUSH.pptx`
 - タスク表（Notion）: https://app.notion.com/p/3fbdbc3807ce80f29a89ca25d3b94d1c
-  - α版: 〜11/16（ステージ1で通しで遊べる）、β版: 11/17〜12/27（盾持ち兵・ステージ2・ボス部屋・隊長・ボス＋素材・UI・演出・音）、提出準備: 12/28〜12/30
+  - α版: 〜11/16（ステージ1で通しで遊べる。BGM・SE・エフェクトもα版に入れる）、β版: 11/17〜12/27（盾持ち兵・ステージ2・ボス部屋・隊長・ボス＋素材・UI・演出・グレネード周りの音とエフェクト）、提出準備: 12/28〜12/30
 
 ## 目標（成績）
 - Aランクを狙う
@@ -58,9 +58,17 @@
 - `3dsmaxbatch.exe tools\3dsMax\ExportTkl.ms -mxsString file:Stage1.max -mxsString level:Stage1` → `Game\Assets\level3D\Stage1.tkl`
 - テクスチャは `texconv.exe -vflip -f BC7_UNORM -srgb -y -o Game\Assets\modelData <画像>` で DDS にする（k2 のツールは `C:\my\02_Git\01_k2Engine\GameTemplate\tools\3dsMaxScripts\`）
 - 書き出し後にできる `MaxData\export_report.txt` と `*_backup.max` は消す
+- 銃: Kenney「Blaster Kit」（CC0）の blaster-g を `tools\3dsMax\MakeBlaster.ms` で `Blaster.max` にして書き出す（元データは `MaxData\import\`）
+- 仮モデル: `MakeTempSoldier.ms`（仮の雑魚兵）、`MakeSandMound.ms`（潜行中の砂の盛り上がり）
+- 敵（SWAT）: 元データは `Documents\Swat`（CGTrader、Mixamo の骨）。`MakeSwat.ms` で `Swat.max` を作る（銃を右手に合体・頂点を18%に削減・待機/歩き/撃つのキーを打つ）。テクスチャは `MaxData\textures\swat\` から 1K の DDS にする（敵は数が多いので軽さ優先）
+  - `ExportTkm.ms -mxsString file:Swat.max -mxsString names:SwatSoldier -mxsString flat:true`（頂点の多いモデルは flat:true にする。false だと読み込み時の法線スムージングで Debug がほぼ止まる）
+  - `ExportTka.ms -mxsString file:Swat.max -mxsString root:SWAT -mxsString clips:Swat_Idle:0:59,Swat_Walk:100:131,Swat_Shoot:200:209` → `Game\Assets\animData\`
+  - ProOptimizer などモディファイアのボタン操作は、バッチでも `select` → `max modify mode` → `modPanel.setCurrentObject` してからなら動く
+- UI の画像は `tools\MakeUISprites.ps1` で作る（`Game\Assets\sprite\UI_*.DDS`）
 
 ## エンジン利用時の注意
 - エンジンのソースは Shift-JIS。基本的に編集しない（必要なときは相談してから）
+  - 変更済み: `k2EngineLow.cpp` の左上のFPS表示は `K2_SHOW_FPS` を定義したときだけ出す
 - 当たり判定のワイヤーフレームは Debug ビルドでのみ表示される
 - CharacterController の座標は足元（カプセルの下端）
 - `FontRender::SetText()` は渡した文字列を書式として `swprintf_s` し直す。`%` を表示したいときは `%%` にして渡す（そのままだと実行時エラー）

@@ -72,7 +72,7 @@ namespace nsK2EngineLow {
 	}
 	void K2EngineLow::EndFrame()
 	{
-#ifdef K2_DEBUG
+#if defined(K2_DEBUG) && defined(K2_SHOW_FPS)
 		m_fpsFont->Begin(g_graphicsEngine->GetRenderContext());
 		float time = g_gameTime->GetFrameDeltaTime();
 		wchar_t text[256];

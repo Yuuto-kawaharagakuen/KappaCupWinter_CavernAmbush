@@ -1,6 +1,7 @@
 ﻿#include "stdafx.h"
 #include "Player.h"
 #include "SandBullet.h"
+#include "HitUtil.h"
 
 namespace
 {
@@ -23,7 +24,48 @@ namespace
 	const float MUZZLE_OFFSET = 40.0f;
 	const int MAX_AMMO = 10;
 	const float RELOAD_INTERVAL = 0.15f;
-	const Vector3 GUN_OFFSET = { 10.0f, -10.0f, 22.0f };
+	const char* const GUN_MODEL_PATH = "Assets/modelData/Blaster.tkm";
+	const Vector3 GUN_OFFSET = { 15.0f, -15.0f, 46.0f };
+	const float GUN_SCALE = 0.75f;
+	const float GUN_AIM_YAW = 3.0f;
+	const float GUN_KICK_DECAY = 11.0f;
+	const float GUN_KICK_BACK = 6.0f;
+	const float GUN_KICK_UP = 1.5f;
+	const float GUN_KICK_PITCH = 9.0f;
+	const float GUN_BOB_SPEED = 9.0f;
+	const float GUN_BOB_X = 0.9f;
+	const float GUN_BOB_Y = 0.6f;
+	const float GUN_BOB_BLEND = 8.0f;
+	const float GUN_RAISE_SPEED = 4.0f;
+	const float GUN_RAISE_DROP = 18.0f;
+	const float GUN_RAISE_PITCH = 25.0f;
+	const float GUN_SWAY_AMOUNT = 0.6f;
+	const float GUN_SWAY_LIMIT = 6.0f;
+	const float GUN_SWAY_DECAY = 10.0f;
+	const float MOVE_THRESHOLD = 0.01f;
+	const int MAX_HP = 100;
+	const float INVINCIBLE_TIME = 0.5f;
+	const int DEBUG_DAMAGE = 20;
+	const float BODY_POINT_MARGIN = 5.0f;
+	const char* const MOUND_MODEL_PATH = "Assets/modelData/SandMound.tkm";
+	const float MOUND_WOBBLE_SPEED = 14.0f;
+	const float MOUND_WOBBLE_HEIGHT = 0.12f;
+	const float MOUND_WOBBLE_WIDTH = 0.05f;
+	const float MOUND_MOVE_STRETCH = 0.2f;
+	const float MOUND_MOVE_BLEND = 6.0f;
+	const float MOUND_SINK = 25.0f;
+	const float MOUND_SCALE = 1.4f;
+
+	float ClampFloat(float value, float minValue, float maxValue)
+	{
+		if (value < minValue) {
+			return minValue;
+		}
+		if (value > maxValue) {
+			return maxValue;
+		}
+		return value;
+	}
 }
 
 Player::Player()
@@ -38,11 +80,14 @@ bool Player::Start()
 {
 	m_charaCon.Init(CAPSULE_RADIUS, CAPSULE_HEIGHT, m_position);
 	m_ammo = MAX_AMMO;
+	m_hp = MAX_HP;
 	g_camera3D->SetNear(0.5f);
 	g_camera3D->SetFar(20000.0f);
 	g_k2Engine->SetDrawVectorEnable();
-	m_gunModel.Init("Assets/modelData/Gun.tkm");
+	m_gunModel.Init(GUN_MODEL_PATH);
 	m_gunModel.SetShadowCasterFlag(false);
+	m_moundModel.Init(MOUND_MODEL_PATH);
+	m_gunModel.SetScale({ GUN_SCALE, GUN_SCALE, GUN_SCALE });
 	UpdateCamera();
 	UpdateGun();
 	return true;
@@ -50,23 +95,18 @@ bool Player::Start()
 
 void Player::Update()
 {
-	UpdateState();
-	Rotate();
+	UpdateDamage();
+	if (!IsDead()) {
+		UpdateState();
+		Rotate();
+	}
 	Move();
 	UpdateCamera();
 	UpdateGun();
-	UpdateReload();
-	Shoot();
-
-	if (m_state == enState_Surface) {
-		fontRender.SetText(L"FPS");
-		fontRender.SetPosition({ -800.0f,450.0f,0.0f });
-		fontRender.SetScale(2.2f);
-	}
-	else {
-		fontRender.SetText(L"TPS");
-		fontRender.SetPosition({ -800.0f,450.0f,0.0f });
-		fontRender.SetScale(2.2f);
+	UpdateMound();
+	if (!IsDead()) {
+		UpdateReload();
+		Shoot();
 	}
 }
 
@@ -84,6 +124,50 @@ bool Player::CanShoot() const
 int Player::GetMaxAmmo() const
 {
 	return MAX_AMMO;
+}
+
+int Player::GetMaxHp() const
+{
+	return MAX_HP;
+}
+
+void Player::Damage(int amount)
+{
+	if (IsDead() || IsDiving() || m_invincibleTimer > 0.0f) {
+		return;
+	}
+	m_hp -= amount;
+	if (m_hp < 0) {
+		m_hp = 0;
+	}
+	m_invincibleTimer = INVINCIBLE_TIME;
+}
+
+bool Player::HitTest(const Vector3& start, const Vector3& end, float radius) const
+{
+	if (IsDead() || IsDiving()) {
+		return false;
+	}
+	float hitRate = 0.0f;
+	return HitUtil::SegmentCapsule(start, end, radius, m_position, CAPSULE_RADIUS, CAPSULE_HEIGHT, hitRate);
+}
+
+bool Player::IsBodyPoint(const Vector3& point) const
+{
+	float hitRate = 0.0f;
+	return HitUtil::SegmentCapsule(point, point, BODY_POINT_MARGIN, m_position, CAPSULE_RADIUS, CAPSULE_HEIGHT, hitRate);
+}
+
+void Player::UpdateDamage()
+{
+	if (m_invincibleTimer > 0.0f) {
+		m_invincibleTimer -= g_gameTime->GetFrameDeltaTime();
+	}
+#ifdef _DEBUG
+	if (g_pad[0]->IsTrigger(enButtonSelect)) {
+		Damage(DEBUG_DAMAGE);
+	}
+#endif
 }
 
 void Player::UpdateReload()
@@ -133,6 +217,8 @@ void Player::Shoot()
 	bullet->Init(muzzlePos, lookDir);
 	m_shotCooldown = SHOT_INTERVAL;
 	m_ammo--;
+	m_isShot = true;
+	m_gunKick = 1.0f;
 }
 
 void Player::UpdateState()
@@ -183,12 +269,13 @@ void Player::Move()
 	float stickY = g_pad[0]->GetLStickYF();
 
 	Vector3 inputDir = m_forward * stickY + m_right * stickX;
-	if (IsSwitching()) {
+	if (IsSwitching() || IsDead()) {
 		inputDir = Vector3::Zero;
 	}
 	if (inputDir.LengthSq() > 1.0f) {
 		inputDir.Normalize();
 	}
+	m_isMoving = inputDir.LengthSq() > MOVE_THRESHOLD && m_charaCon.IsOnGround();
 
 	float speed = IsDiving() ? DIVE_SPEED : WALK_SPEED;
 	m_moveSpeed.x = inputDir.x * speed;
@@ -247,10 +334,33 @@ void Player::UpdateCamera()
 
 void Player::UpdateGun()
 {
+	float deltaTime = g_gameTime->GetFrameDeltaTime();
+	float yawDelta = m_yaw - m_lastYaw;
+	float pitchDelta = m_pitch - m_lastPitch;
+	m_lastYaw = m_yaw;
+	m_lastPitch = m_pitch;
+
 	m_isGunVisible = !IsDiving() && !IsSwitching();
 	if (!m_isGunVisible) {
+		m_gunRaise = 0.0f;
+		m_gunKick = 0.0f;
 		return;
 	}
+
+	float decay = expf(-GUN_SWAY_DECAY * deltaTime);
+	m_gunSwayYaw = ClampFloat(m_gunSwayYaw * decay - yawDelta * GUN_SWAY_AMOUNT, -GUN_SWAY_LIMIT, GUN_SWAY_LIMIT);
+	m_gunSwayPitch = ClampFloat(m_gunSwayPitch * decay - pitchDelta * GUN_SWAY_AMOUNT, -GUN_SWAY_LIMIT, GUN_SWAY_LIMIT);
+	m_gunKick *= expf(-GUN_KICK_DECAY * deltaTime);
+	m_gunRaise = ClampFloat(m_gunRaise + GUN_RAISE_SPEED * deltaTime, 0.0f, 1.0f);
+
+	float bobTarget = m_isMoving ? 1.0f : 0.0f;
+	m_gunBobWeight += (bobTarget - m_gunBobWeight) * ClampFloat(GUN_BOB_BLEND * deltaTime, 0.0f, 1.0f);
+	if (m_isMoving) {
+		m_gunBobPhase += GUN_BOB_SPEED * deltaTime;
+	}
+
+	float raise = 1.0f - m_gunRaise;
+	raise = raise * raise;
 
 	Quaternion yawRot;
 	yawRot.SetRotationDegY(m_yaw);
@@ -266,19 +376,66 @@ void Player::UpdateGun()
 	rotation.Apply(up);
 	rotation.Apply(forward);
 
+	Vector3 offset = GUN_OFFSET;
+	offset.x += sinf(m_gunBobPhase) * GUN_BOB_X * m_gunBobWeight;
+	offset.y += -fabsf(cosf(m_gunBobPhase)) * GUN_BOB_Y * m_gunBobWeight;
+	offset.y += m_gunKick * GUN_KICK_UP - raise * GUN_RAISE_DROP;
+	offset.z -= m_gunKick * GUN_KICK_BACK;
+
 	Vector3 gunPos = m_position;
 	gunPos.y += EYE_HEIGHT;
-	gunPos += right * GUN_OFFSET.x + up * GUN_OFFSET.y + forward * GUN_OFFSET.z;
+	gunPos += right * offset.x + up * offset.y + forward * offset.z;
+
+	Quaternion localRot;
+	localRot.SetRotationDegX(-(m_gunKick * GUN_KICK_PITCH) + raise * GUN_RAISE_PITCH + m_gunSwayPitch);
+	Quaternion swayRot;
+	swayRot.SetRotationDegY(m_gunSwayYaw + GUN_AIM_YAW);
+	Quaternion gunRot;
+	gunRot.Multiply(localRot, swayRot);
+	Quaternion finalRot;
+	finalRot.Multiply(gunRot, rotation);
 
 	m_gunModel.SetPosition(gunPos);
-	m_gunModel.SetRotation(rotation);
+	m_gunModel.SetRotation(finalRot);
 	m_gunModel.Update();
+}
+
+void Player::UpdateMound()
+{
+	float deltaTime = g_gameTime->GetFrameDeltaTime();
+	m_isMoundVisible = m_cameraBlend > 0.0f;
+	if (!m_isMoundVisible) {
+		m_moundMoveWeight = 0.0f;
+		return;
+	}
+
+	float moveTarget = m_isMoving && IsDiving() ? 1.0f : 0.0f;
+	m_moundMoveWeight += (moveTarget - m_moundMoveWeight) * ClampFloat(MOUND_MOVE_BLEND * deltaTime, 0.0f, 1.0f);
+	m_moundPhase += MOUND_WOBBLE_SPEED * deltaTime * (0.3f + m_moundMoveWeight);
+
+	float rise = m_cameraBlend * m_cameraBlend * (3.0f - 2.0f * m_cameraBlend) * MOUND_SCALE;
+	float wobble = sinf(m_moundPhase);
+	float width = rise * (1.0f + wobble * MOUND_WOBBLE_WIDTH);
+	float height = rise * (1.0f - wobble * MOUND_WOBBLE_HEIGHT * (0.4f + m_moundMoveWeight));
+	float length = rise * (1.0f + m_moundMoveWeight * MOUND_MOVE_STRETCH);
+
+	Vector3 position = m_position;
+	position.y -= (1.0f - rise / MOUND_SCALE) * MOUND_SINK;
+	Quaternion rotation;
+	rotation.SetRotationDegY(m_yaw);
+
+	m_moundModel.SetPosition(position);
+	m_moundModel.SetRotation(rotation);
+	m_moundModel.SetScale({ width, height, length });
+	m_moundModel.Update();
 }
 
 void Player::Render(RenderContext& rc)
 {
+	if (m_isMoundVisible) {
+		m_moundModel.Draw(rc);
+	}
 	if (m_isGunVisible) {
 		m_gunModel.Draw(rc);
 	}
-	fontRender.Draw(rc);
 }

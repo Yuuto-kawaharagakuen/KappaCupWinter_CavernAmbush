@@ -6,6 +6,7 @@
 	local maxFile = projDir + "MaxData\\" + args[#file]
 	local modelDir = projDir + "Game\\Assets\\modelData\\"
 	local exportNames = filterString args[#names] ","
+	local isFlatShading = (args[#flat] == "true")
 
 	global g_exportReport = createFile (projDir + "MaxData\\export_report.txt")
 
@@ -43,7 +44,7 @@
 		(
 			local outPath = modelDir + nm + ".tkm"
 			local exporter = exporterDef()
-			exporter.SaveTkm #(n) outPath false
+			exporter.SaveTkm #(n) outPath isFlatShading
 			format "EXPORTED: %\n" outPath to:g_exportReport
 		)
 	)
