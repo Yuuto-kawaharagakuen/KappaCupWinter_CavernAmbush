@@ -249,6 +249,8 @@
     <ClInclude Include="EnemyBase.h" />
     <ClInclude Include="EnemyBullet.h" />
     <ClInclude Include="HitUtil.h" />
+    <ClInclude Include="MathUtil.h" />
+    <ClInclude Include="ObjectNames.h" />
     <ClInclude Include="Soldier.h" />
     <ClInclude Include="PlayerUI.h" />
     <ClInclude Include="Game.h" />

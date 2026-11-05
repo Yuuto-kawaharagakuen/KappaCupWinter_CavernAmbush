@@ -19,7 +19,6 @@ public:
 
 private:
 	ModelRender m_model;
-	CollisionObject* m_collision = nullptr;
 	Vector3 m_position = Vector3::Zero;
 	Vector3 m_direction = Vector3::AxisZ;
 	float m_traveled = 0.0f;

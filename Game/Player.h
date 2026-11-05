@@ -66,6 +66,12 @@ public:
 	{
 		return m_isMoving;
 	}
+	bool IsAiming() const
+	{
+		return m_aimBlend > 0.0f;
+	}
+	float GetAimRate() const;
+	Vector3 GetMuzzlePosition() const;
 	bool ConsumeShotFlag()
 	{
 		bool isShot = m_isShot;
@@ -76,6 +82,7 @@ public:
 private:
 	void UpdateDamage();
 	void UpdateState();
+	void UpdateAim();
 	void UpdateReload();
 	void Shoot();
 	void Rotate();
@@ -115,5 +122,9 @@ private:
 	float m_moundPhase = 0.0f;
 	float m_moundMoveWeight = 0.0f;
 	bool m_isMoundVisible = false;
+	float m_aimBlend = 0.0f;
+	float m_baseViewAngle = 0.0f;
+	Vector3 m_gunPosition = Vector3::Zero;
+	Quaternion m_gunRotation = Quaternion::Identity;
 
 };

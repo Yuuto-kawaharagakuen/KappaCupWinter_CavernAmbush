@@ -2,6 +2,8 @@
 #include "Soldier.h"
 #include "Player.h"
 #include "EnemyBullet.h"
+#include "MathUtil.h"
+#include "ObjectNames.h"
 
 namespace
 {
@@ -10,12 +12,23 @@ namespace
 		"Assets/animData/Swat_Idle.tka",
 		"Assets/animData/Swat_Walk.tka",
 		"Assets/animData/Swat_Shoot.tka",
+		"Assets/animData/Swat_Death.tka",
+		"Assets/animData/Swat_Look.tka",
+		"Assets/animData/Swat_Aim.tka",
 	};
+	const float DEATH_ANIMATION_TIME = 36.0f / 30.0f;
+	const float DEATH_BLEND_TIME = 0.1f;
+	const float STUCK_MOVE_RATE = 0.25f;
+	const float STUCK_TIME = 0.5f;
+	const float AVOID_TIME = 0.7f;
+	const float AVOID_SPEED = 160.0f;
+	const float AVOID_BACK_RATE = 0.35f;
+	const int AVOID_GIVE_UP_COUNT = 3;
+	const float AVOID_COUNT_RESET_TIME = 3.0f;
+	const float MOVE_INTENT_THRESHOLD = 10.0f;
 	const float ANIMATION_BLEND_TIME = 0.2f;
 	const float SHOOT_BLEND_TIME = 0.05f;
 	const float WALK_ANIMATION_THRESHOLD = 10.0f;
-	const char* const PLAYER_NAME = "player";
-	const char* const ENEMY_BULLET_NAME = "enemyBullet";
 	const int MAX_HP = 30;
 	const float CAPSULE_RADIUS = 30.0f;
 	const float CAPSULE_HEIGHT = 120.0f;
@@ -27,7 +40,7 @@ namespace
 	const float PATROL_WAIT_TIME = 1.5f;
 
 	const float EYE_HEIGHT = 165.0f;
-	const float PLAYER_AIM_HEIGHT = 120.0f;
+	const float PLAYER_AIM_HEIGHT = 145.0f;
 	const float SIGHT_RANGE = 1600.0f;
 	const float SIGHT_HALF_ANGLE = 55.0f;
 	const float SIGHT_RAY_MARGIN = 50.0f;
@@ -35,7 +48,6 @@ namespace
 	const int SIGHT_RAY_RETRY_NUM = 4;
 	const float SIGHT_CHARACTER_MARGIN = 5.0f;
 	const float SIGHT_CHARACTER_SKIP = 70.0f;
-	const char* const ENEMY_NAME = "enemy";
 	const float SENSE_RANGE = 450.0f;
 	const float SENSE_HALF_ANGLE = 100.0f;
 	const float SUSPICION_TIME = 5.0f;
@@ -56,9 +68,9 @@ namespace
 	const float SHOT_FACING_ANGLE = 12.0f;
 	const float SHOT_SPREAD = 0.035f;
 	const int SHOT_DAMAGE = 10;
-	const float MUZZLE_HEIGHT = 122.0f;
-	const float MUZZLE_FORWARD = 55.0f;
-	const float MUZZLE_RIGHT = 24.0f;
+	const float MUZZLE_HEIGHT = 152.0f;
+	const float MUZZLE_FORWARD = 62.0f;
+	const float MUZZLE_RIGHT = -6.0f;
 
 	const float MARK_HEIGHT = 215.0f;
 	const float MARK_SCALE = 1.3f;
@@ -93,11 +105,13 @@ void Soldier::OnStart()
 {
 	for (int i = 0; i < enAnimationClip_Num; i++) {
 		m_animationClips[i].Load(ANIMATION_PATHS[i]);
-		m_animationClips[i].SetLoopFlag(i != enAnimationClip_Shoot);
+		m_animationClips[i].SetLoopFlag(i != enAnimationClip_Shoot && i != enAnimationClip_Death);
 	}
 	InitBase(MODEL_PATH, MAX_HP, CAPSULE_RADIUS, CAPSULE_HEIGHT, m_animationClips, enAnimationClip_Num);
-	m_player = FindGO<Player>(PLAYER_NAME);
+	m_player = FindGO<Player>(ObjectName::PLAYER);
 	m_rotation.SetRotationDegY(m_yaw);
+	m_deathAnimationTime = DEATH_ANIMATION_TIME;
+	m_prevPosition = m_position;
 
 	m_mark.SetFontType(enFontType::Bold);
 	m_mark.SetScale(MARK_SCALE);
@@ -107,6 +121,7 @@ void Soldier::OnStart()
 void Soldier::UpdateAlive()
 {
 	float deltaTime = g_gameTime->GetFrameDeltaTime();
+	UpdateStuck(deltaTime);
 	m_moveSpeed.x = 0.0f;
 	m_moveSpeed.z = 0.0f;
 
@@ -122,6 +137,8 @@ void Soldier::UpdateAlive()
 		break;
 	}
 
+	UpdateAvoid(deltaTime);
+	m_lastMoveIntent = sqrtf(m_moveSpeed.x * m_moveSpeed.x + m_moveSpeed.z * m_moveSpeed.z);
 	m_rotation.SetRotationDegY(m_yaw);
 	UpdateAnimation();
 	UpdateMark(deltaTime);
@@ -137,12 +154,85 @@ void Soldier::UpdateAnimation()
 	}
 
 	float speed = sqrtf(m_moveSpeed.x * m_moveSpeed.x + m_moveSpeed.z * m_moveSpeed.z);
-	EnAnimationClip next = speed > WALK_ANIMATION_THRESHOLD ? enAnimationClip_Walk : enAnimationClip_Idle;
+	EnAnimationClip next = enAnimationClip_Idle;
+	if (speed > WALK_ANIMATION_THRESHOLD) {
+		next = enAnimationClip_Walk;
+	}
+	else if (m_state == enState_Alert) {
+		next = enAnimationClip_Look;
+	}
+	else if (m_state == enState_Attack) {
+		next = enAnimationClip_Aim;
+	}
 	if (next != m_currentAnimation) {
 		m_model.PlayAnimation(next, ANIMATION_BLEND_TIME);
 		m_currentAnimation = next;
 	}
 	m_model.SetAnimationSpeed(next == enAnimationClip_Walk ? speed / WALK_SPEED : 1.0f);
+}
+
+void Soldier::UpdateStuck(float deltaTime)
+{
+	Vector3 moved = m_position - m_prevPosition;
+	moved.y = 0.0f;
+	m_prevPosition = m_position;
+	if (m_lastMoveIntent > MOVE_INTENT_THRESHOLD && m_avoidTimer <= 0.0f
+		&& moved.Length() < m_lastMoveIntent * deltaTime * STUCK_MOVE_RATE) {
+		m_stuckTimer += deltaTime;
+		m_freeTimer = 0.0f;
+		return;
+	}
+	m_stuckTimer = 0.0f;
+	m_freeTimer += deltaTime;
+	if (m_freeTimer >= AVOID_COUNT_RESET_TIME) {
+		m_avoidCount = 0;
+	}
+}
+
+void Soldier::UpdateAvoid(float deltaTime)
+{
+	if (m_avoidTimer > 0.0f) {
+		m_avoidTimer -= deltaTime;
+		m_moveSpeed.x = m_avoidDirection.x * AVOID_SPEED;
+		m_moveSpeed.z = m_avoidDirection.z * AVOID_SPEED;
+		TurnToYaw(MathUtil::YawFromDirection(m_avoidDirection), deltaTime);
+		return;
+	}
+	if (m_stuckTimer < STUCK_TIME) {
+		return;
+	}
+
+	m_stuckTimer = 0.0f;
+	m_avoidCount++;
+	if (m_avoidCount >= AVOID_GIVE_UP_COUNT) {
+		m_avoidCount = 0;
+		GiveUpMove();
+		return;
+	}
+
+	Vector3 forward = GetForward();
+	Vector3 right = { forward.z, 0.0f, -forward.x };
+	float side = (m_avoidCount % 2 == 1) ? 1.0f : -1.0f;
+	m_avoidDirection = right * side - forward * AVOID_BACK_RATE;
+	m_avoidDirection.Normalize();
+	m_avoidTimer = AVOID_TIME;
+}
+
+void Soldier::GiveUpMove()
+{
+	if (m_state == enState_Alert) {
+		m_lastKnownPosition = m_position;
+		return;
+	}
+	if (m_state == enState_Patrol && !m_patrolPoints.empty()) {
+		AdvancePatrolPoint();
+	}
+}
+
+void Soldier::AdvancePatrolPoint()
+{
+	m_patrolIndex = (m_patrolIndex + 1) % static_cast<int>(m_patrolPoints.size());
+	m_waitTimer = PATROL_WAIT_TIME;
 }
 
 void Soldier::UpdatePatrol(float deltaTime)
@@ -171,8 +261,7 @@ void Soldier::UpdatePatrol(float deltaTime)
 		return;
 	}
 	if (MoveTo(m_patrolPoints[m_patrolIndex], WALK_SPEED)) {
-		m_waitTimer = PATROL_WAIT_TIME;
-		m_patrolIndex = (m_patrolIndex + 1) % static_cast<int>(m_patrolPoints.size());
+		AdvancePatrolPoint();
 	}
 	else {
 		TurnTo(m_patrolPoints[m_patrolIndex], deltaTime);
@@ -202,10 +291,7 @@ void Soldier::UpdateAlert(float deltaTime)
 		ApproachLookingAround(m_lastKnownPosition, deltaTime);
 		return;
 	}
-	m_suspicion -= SUSPICION_DECAY * deltaTime;
-	if (m_suspicion < 0.0f) {
-		m_suspicion = 0.0f;
-	}
+	m_suspicion = MathUtil::Clamp(m_suspicion - SUSPICION_DECAY * deltaTime, 0.0f, SUSPICION_TIME);
 
 	if (!MoveTo(m_lastKnownPosition, ALERT_SPEED)) {
 		TurnTo(m_lastKnownPosition, deltaTime);
@@ -232,8 +318,7 @@ void Soldier::UpdateAttack(float deltaTime)
 		TurnTo(m_lastKnownPosition, deltaTime);
 
 		m_shotTimer -= deltaTime;
-		Vector3 toPlayer = m_lastKnownPosition - m_position;
-		float targetYaw = Math::RadToDeg(atan2f(toPlayer.x, toPlayer.z));
+		float targetYaw = MathUtil::YawFromDirection(m_lastKnownPosition - m_position);
 		if (m_shotTimer <= 0.0f && fabsf(AngleDiff(m_yaw, targetYaw)) <= SHOT_FACING_ANGLE) {
 			Shoot();
 			m_shotTimer = SHOT_INTERVAL;
@@ -323,7 +408,7 @@ bool Soldier::IsSightBlocked(const Vector3& start, const Vector3& end) const
 			return false;
 		}
 		bool isCharacter = false;
-		QueryGOs<EnemyBase>(ENEMY_NAME, [&](EnemyBase* enemy) {
+		QueryGOs<EnemyBase>(ObjectName::ENEMY, [&](EnemyBase* enemy) {
 			float rate = 0.0f;
 			if (enemy->HitTest(hitPos, hitPos, SIGHT_CHARACTER_MARGIN, rate)) {
 				isCharacter = true;
@@ -365,8 +450,7 @@ void Soldier::ApproachLookingAround(const Vector3& target, float deltaTime)
 	Vector3 toTarget = target - m_position;
 	toTarget.y = 0.0f;
 	m_lookPhase += APPROACH_LOOK_SPEED * deltaTime;
-	float targetYaw = Math::RadToDeg(atan2f(toTarget.x, toTarget.z));
-	TurnToYaw(targetYaw + sinf(m_lookPhase) * APPROACH_LOOK_ANGLE, deltaTime);
+	TurnToYaw(MathUtil::YawFromDirection(toTarget) + sinf(m_lookPhase) * APPROACH_LOOK_ANGLE, deltaTime);
 	if (toTarget.Length() > APPROACH_STOP_DISTANCE) {
 		Vector3 forward = GetForward();
 		m_moveSpeed.x = forward.x * APPROACH_SPEED;
@@ -399,7 +483,7 @@ void Soldier::TurnTo(const Vector3& target, float deltaTime)
 	if (toTarget.LengthSq() < 1.0f) {
 		return;
 	}
-	TurnToYaw(Math::RadToDeg(atan2f(toTarget.x, toTarget.z)), deltaTime);
+	TurnToYaw(MathUtil::YawFromDirection(toTarget), deltaTime);
 }
 
 void Soldier::TurnToYaw(float targetYaw, float deltaTime)
@@ -434,7 +518,7 @@ void Soldier::Shoot()
 	m_currentAnimation = enAnimationClip_Shoot;
 	m_isShooting = true;
 
-	EnemyBullet* bullet = NewGO<EnemyBullet>(0, ENEMY_BULLET_NAME);
+	EnemyBullet* bullet = NewGO<EnemyBullet>(0, ObjectName::ENEMY_BULLET);
 	bullet->Init(muzzle, direction, SHOT_DAMAGE);
 }
 
@@ -452,6 +536,10 @@ void Soldier::OnDamage()
 void Soldier::OnDead()
 {
 	m_isMarkVisible = false;
+	m_isShooting = false;
+	m_model.SetAnimationSpeed(1.0f);
+	m_model.PlayAnimation(enAnimationClip_Death, DEATH_BLEND_TIME);
+	m_currentAnimation = enAnimationClip_Death;
 }
 
 void Soldier::UpdateMark(float deltaTime)

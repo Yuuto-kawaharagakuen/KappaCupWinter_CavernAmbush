@@ -51,6 +51,10 @@
 		polyop.attach gun c
 	)
 	polyop.setFaceMatID gun #all 4
+	fn nodeCenter n = ( local bb = nodeGetBoundingBox n (matrix3 1); (bb[1] + bb[2]) * 0.5 )
+	local gunBarrel = nodeCenter (getNodeByName "barrel_low")
+	local gunStock = nodeCenter (getNodeByName "stockBack_low")
+	local gunBackSight = nodeCenter (getNodeByName "backSight_low")
 	for p in gunParts do delete p
 
 	local sk = body.modifiers[#Skin]
@@ -138,6 +142,62 @@
 	local parentIndex = for b in bonesList collect (if b.parent == undefined then 0 else findItem bonesList b.parent)
 	local localTM = for i = 1 to bonesList.count collect (if parentIndex[i] == 0 then rest[i] else rest[i] * (inverse rest[parentIndex[i]]))
 
+	fn rotBetween a b =
+	(
+		local na = normalize a
+		local nb = normalize b
+		local c = dot na nb
+		if c > 0.99999 then return (matrix3 1)
+		local ax = normalize (cross na nb)
+		local ang = acos (amin 1.0 (amax -1.0 c))
+		local m = (angleAxis ang ax) as matrix3
+		if (dot (normalize (na * m)) nb) < 0.999 then m = (angleAxis (-ang) ax) as matrix3
+		m
+	)
+	global g_rotBetween = rotBetween
+
+	fn elbowPos a b c target pole =
+	(
+		local l1 = distance a b
+		local l2 = distance b c
+		local toT = target - a
+		local d = amin (length toT) (l1 + l2 - 0.01)
+		local dirT = normalize toT
+		local cosA = (l1 * l1 + d * d - l2 * l2) / (2.0 * l1 * d)
+		cosA = amin 1.0 (amax -1.0 cosA)
+		local sinA = sqrt (1.0 - cosA * cosA)
+		local perp = pole - dirT * (dot pole dirT)
+		perp = normalize perp
+		a + dirT * (cosA * l1) + perp * (sinA * l1)
+	)
+	global g_elbowPos = elbowPos
+
+	local gunDir = gunBarrel - gunStock
+	local yawDeg = -90.0 - (atan2 gunDir.y gunDir.x)
+	local yawM = rotateZMatrix yawDeg
+	if (normalize ([gunDir.x, gunDir.y, 0] * yawM)).y > -0.99 then yawM = rotateZMatrix (-yawDeg)
+	local d1 = gunDir * yawM
+	local pitchDeg = atan2 d1.z (-d1.y)
+	local pitchM = rotateXMatrix pitchDeg
+	if abs ((normalize (d1 * pitchM)).z) > 0.01 then pitchM = rotateXMatrix (-pitchDeg)
+	local aimSightTarget = [-6.0, -26.0, 163.0]
+	local gunX = (transMatrix (-gunBackSight)) * yawM * pitchM * (transMatrix aimSightTarget)
+	format "gun dir after:% \n" (normalize (gunDir * yawM * pitchM)) to:g_swatReport
+	local muzzleAim = (gunBarrel + (normalize gunDir) * 4.0) * gunX
+	format "aim muzzle (max coords):%\n" muzzleAim to:g_swatReport
+
+	fn findBone name = ( local i = 0; for j = 1 to ::g_bonesList.count do if ::g_bonesList[j].name == name then i = j; i )
+	global g_bonesList = bonesList
+	local spineIdx = findBone "mixamorig:Spine1"
+	local armChains = #()
+	for side in #(#(#("mixamorig:RightArm", "mixamorig:RightForeArm", "mixamorig:RightHand"), [-1.0, 0.0, -1.0]), #(#("mixamorig:LeftArm", "mixamorig:LeftForeArm", "mixamorig:LeftHand"), [1.0, 0.3, -1.0])) do
+	(
+		local idx = for n in side[1] collect findBone n
+		local handLocal = rest[idx[3]] * gunX * (inverse rest[spineIdx])
+		append armChains #(idx, handLocal, side[2])
+	)
+	global g_armChains = armChains
+
 	fn boneOffset name clip t =
 	(
 		local rx = 0.0
@@ -176,15 +236,55 @@
 			(
 				"mixamorig:Spine1": rx = -5.0 * kick
 				"mixamorig:Neck": rx = 2.0 * kick
-				"mixamorig:RightShoulder": rx = -3.0 * kick
+			)
+		)
+		else if clip == #aim then
+		(
+			local ph = 360.0 * t / 30.0
+			case name of
+			(
+				"mixamorig:Spine1": rx = 0.6 * sin ph
+				"mixamorig:LeftUpLeg": rx = -8.0
+				"mixamorig:LeftLeg": rx = 10.0
+				"mixamorig:RightLeg": rx = 6.0
+				"mixamorig:Hips": pz = -2.0
+			)
+		)
+		else if clip == #death then
+		(
+			local b = amin 1.0 (t / 10.0)
+			local buckle = b * b * (3.0 - 2.0 * b)
+			local fl = amax 0.0 (amin 1.0 ((t - 6.0) / 22.0))
+			local fall = fl * fl
+			case name of
+			(
+				"SWAT": rx = -86.0 * fall
+				"mixamorig:Hips": pz = -20.0 * buckle
+				"mixamorig:LeftUpLeg": rx = -25.0 * buckle
+				"mixamorig:RightUpLeg": rx = -20.0 * buckle
+				"mixamorig:LeftLeg": rx = 45.0 * buckle
+				"mixamorig:RightLeg": rx = 38.0 * buckle
+				"mixamorig:Spine1": rx = -10.0 * fall
+				"mixamorig:Neck": rx = -15.0 * fall
+			)
+		)
+		else if clip == #look then
+		(
+			local ph = 360.0 * t / 90.0
+			case name of
+			(
+				"mixamorig:Spine": rz = 5.0 * sin ph
+				"mixamorig:Spine1": (rz = 12.0 * sin (ph - 30.0); rx = 1.0 * sin (ph * 2.0))
+				"mixamorig:Neck": rz = 30.0 * sin ph
+				"mixamorig:Head": rz = 18.0 * sin (ph + 20.0)
 			)
 		)
 		#(rx, rz, pz)
 	)
 	global g_boneOffset = boneOffset
 
-	local clips = #(#(#idle, 0, 59), #(#walk, 100, 131), #(#shoot, 200, 209))
-	animationRange = interval 0 220
+	local clips = #(#(#idle, 0, 59), #(#walk, 100, 131), #(#shoot, 200, 209), #(#death, 300, 335), #(#look, 400, 489), #(#aim, 500, 529))
+	animationRange = interval 0 540
 	with animate on
 	(
 		for c in clips do
@@ -192,9 +292,27 @@
 			for f = c[2] to c[3] do
 			(
 				local world = #()
+				local isAim = (c[1] == #aim or c[1] == #shoot)
+				local overrides = #()
 				for i = 1 to bonesList.count do
 				(
 					local m = if parentIndex[i] == 0 then copy rest[i] else localTM[i] * world[parentIndex[i]]
+					local ov = 0
+					for k = 1 to overrides.count do if overrides[k][1] == i then ov = k
+					if ov > 0 then
+					(
+						m = overrides[ov][2]
+						if overrides[ov].count > 2 then
+						(
+							local cPos = (localTM[overrides[ov][3]] * m).translationPart
+							local ePos = m.translationPart
+							m = m * (transMatrix (-ePos)) * (rotBetween (cPos - ePos) (overrides[ov][4] - ePos)) * (transMatrix ePos)
+							append overrides #(overrides[ov][3], overrides[ov][5])
+						)
+						world[i] = m
+						at time f bonesList[i].transform = m
+						continue
+					)
 					local ofs = boneOffset bonesList[i].name c[1] (f - c[2])
 					if ofs[1] != 0.0 or ofs[2] != 0.0 then
 					(
@@ -202,6 +320,22 @@
 						m = m * (transMatrix (-p)) * (rotateXMatrix ofs[1]) * (rotateZMatrix ofs[2]) * (transMatrix p)
 					)
 					if ofs[3] != 0.0 then m.translation = m.translation + [0, 0, ofs[3]]
+					if isAim then
+					(
+						for ch in armChains where ch[1][1] == i do
+						(
+							local idx = ch[1]
+							local handW = ch[2] * world[spineIdx]
+							local target = handW.translationPart
+							local aPos = m.translationPart
+							local foreW0 = localTM[idx[2]] * m
+							local bPos = foreW0.translationPart
+							local cPos0 = (localTM[idx[3]] * foreW0).translationPart
+							local ePos = elbowPos aPos bPos cPos0 target ch[3]
+							m = m * (transMatrix (-aPos)) * (rotBetween (bPos - aPos) (ePos - aPos)) * (transMatrix aPos)
+							append overrides #(idx[2], localTM[idx[2]] * m, idx[3], target, handW)
+						)
+					)
 					world[i] = m
 					at time f bonesList[i].transform = m
 				)

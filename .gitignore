@@ -72,3 +72,9 @@ Testing/
 x64/
 [Rr]elease/
 [Dd]ebug/
+
+# 購入・配布元ライセンスの元データ（公開リポジトリに上げない）
+MaxData/Swat.max
+MaxData/M4.max
+MaxData/textures/swat/
+MaxData/textures/m4/

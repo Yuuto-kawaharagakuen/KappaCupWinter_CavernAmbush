@@ -10,6 +10,7 @@ namespace
 	const float DEATH_FALL_TIME = 0.4f;
 	const float DEATH_SINK_TIME = 0.8f;
 	const float DEATH_SINK_DEPTH = 120.0f;
+	const float DEATH_LIE_TIME = 1.0f;
 }
 
 EnemyBase::EnemyBase()
@@ -100,8 +101,9 @@ void EnemyBase::UpdateDeath()
 {
 	m_deathTimer += g_gameTime->GetFrameDeltaTime();
 
-	float fallRate = HitUtil::Clamp01(m_deathTimer / DEATH_FALL_TIME);
-	float sinkRate = HitUtil::Clamp01((m_deathTimer - DEATH_FALL_TIME) / DEATH_SINK_TIME);
+	float fallTime = m_deathAnimationTime > 0.0f ? m_deathAnimationTime + DEATH_LIE_TIME : DEATH_FALL_TIME;
+	float fallRate = m_deathAnimationTime > 0.0f ? 0.0f : MathUtil::Clamp01(m_deathTimer / DEATH_FALL_TIME);
+	float sinkRate = MathUtil::Clamp01((m_deathTimer - fallTime) / DEATH_SINK_TIME);
 
 	Quaternion fall;
 	fall.SetRotationDegX(-90.0f * fallRate * fallRate);

@@ -42,9 +42,16 @@ private:
 		enAnimationClip_Idle,
 		enAnimationClip_Walk,
 		enAnimationClip_Shoot,
+		enAnimationClip_Death,
+		enAnimationClip_Look,
+		enAnimationClip_Aim,
 		enAnimationClip_Num,
 	};
 
+	void UpdateStuck(float deltaTime);
+	void UpdateAvoid(float deltaTime);
+	void GiveUpMove();
+	void AdvancePatrolPoint();
 	void UpdatePatrol(float deltaTime);
 	void UpdateAlert(float deltaTime);
 	void UpdateAttack(float deltaTime);
@@ -75,6 +82,13 @@ private:
 	float m_lostTimer = 0.0f;
 	float m_alertTimer = 0.0f;
 	float m_suspicion = 0.0f;
+	Vector3 m_prevPosition = Vector3::Zero;
+	Vector3 m_avoidDirection = Vector3::Zero;
+	float m_lastMoveIntent = 0.0f;
+	float m_stuckTimer = 0.0f;
+	float m_freeTimer = 0.0f;
+	float m_avoidTimer = 0.0f;
+	int m_avoidCount = 0;
 	float m_lookPhase = 0.0f;
 	float m_shotTimer = 0.0f;
 	float m_reactionTimer = 0.0f;

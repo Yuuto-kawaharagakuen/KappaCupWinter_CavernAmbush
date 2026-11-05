@@ -1,11 +1,11 @@
 ﻿#include "stdafx.h"
 #include "EnemyBullet.h"
 #include "Player.h"
+#include "ObjectNames.h"
 
 namespace
 {
 	const char* const MODEL_PATH = "Assets/modelData/SandBullet.tkm";
-	const char* const PLAYER_NAME = "player";
 	const float BULLET_SPEED = 1800.0f;
 	const float BULLET_RANGE = 3000.0f;
 	const float BULLET_RADIUS = 8.0f;
@@ -30,7 +30,7 @@ void EnemyBullet::Init(const Vector3& position, const Vector3& direction, int da
 
 bool EnemyBullet::Start()
 {
-	m_player = FindGO<Player>(PLAYER_NAME);
+	m_player = FindGO<Player>(ObjectName::PLAYER);
 	m_model.Init(MODEL_PATH);
 	m_model.SetShadowCasterFlag(false);
 	m_model.SetScale({ BULLET_SCALE, BULLET_SCALE, BULLET_SCALE });

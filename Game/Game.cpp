@@ -7,6 +7,7 @@
 #include "Fade.h"
 #include "Soldier.h"
 #include "EnemyBullet.h"
+#include "ObjectNames.h"
 
 namespace
 {
@@ -57,11 +58,11 @@ Game::~Game()
 	DeleteGO(m_player);
 	DeleteGO(m_stage);
 	DeleteGO(m_playerUI);
-	QueryGOs<EnemyBase>("enemy", [](EnemyBase* enemy) {
+	QueryGOs<EnemyBase>(ObjectName::ENEMY, [](EnemyBase* enemy) {
 		DeleteGO(enemy);
 		return true;
 	});
-	QueryGOs<EnemyBullet>("enemyBullet", [](EnemyBullet* bullet) {
+	QueryGOs<EnemyBullet>(ObjectName::ENEMY_BULLET, [](EnemyBullet* bullet) {
 		DeleteGO(bullet);
 		return true;
 	});
@@ -69,25 +70,25 @@ Game::~Game()
 
 bool Game::Start()
 {
-	m_fade = FindGO<Fade>("fade");
+	m_fade = FindGO<Fade>(ObjectName::FADE);
 	if (m_fade == nullptr) {
-		m_fade = NewGO<Fade>(10, "fade");
+		m_fade = NewGO<Fade>(10, ObjectName::FADE);
 	}
 
-	m_stage = NewGO<Stage>(0, "stage");
+	m_stage = NewGO<Stage>(0, ObjectName::STAGE);
 	m_stage->Load("Assets/level3D/Stage1.tkl");
 
-	m_player = NewGO<Player>(0, "player");
+	m_player = NewGO<Player>(0, ObjectName::PLAYER);
 	m_player->SetPosition(m_stage->GetPlayerStartPosition());
 
-	m_playerUI = NewGO<PlayerUI>(1, "playerUI");
+	m_playerUI = NewGO<PlayerUI>(1, ObjectName::PLAYER_UI);
 	m_playerUI->SetPlayer(m_player);
 
 	float fallbackY = m_stage->GetPlayerStartPosition().y;
 	for (const auto& data : SOLDIERS) {
 		Vector3 start = FindFloorPosition(data.x, data.z, fallbackY);
 		Vector3 patrol = FindFloorPosition(data.patrolX, data.patrolZ, fallbackY);
-		Soldier* soldier = NewGO<Soldier>(0, "enemy");
+		Soldier* soldier = NewGO<Soldier>(0, ObjectName::ENEMY);
 		soldier->SetPosition(start);
 		soldier->SetYaw(data.yaw);
 		soldier->AddPatrolPoint(start);
@@ -113,7 +114,7 @@ void Game::Update()
 	}
 
 	if (m_fade->IsBlack()) {
-		NewGO<GameOver>(0, "gameOver");
+		NewGO<GameOver>(0, ObjectName::GAME_OVER);
 		m_fade->StartFadeIn();
 		DeleteGO(this);
 	}

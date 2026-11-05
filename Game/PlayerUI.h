@@ -46,10 +46,13 @@ private:
 	void UpdateReload(float deltaTime);
 	void UpdateDamagePopups(float deltaTime);
 	void UpdateVignette(float deltaTime);
+	void UpdateScope();
 
 	Player* m_player = nullptr;
 
 	SpriteRender m_vignette;
+	SpriteRender m_scope;
+	float m_scopeAlpha = 0.0f;
 	float m_damageFlash = 0.0f;
 	float m_lowHpPulse = 0.0f;
 

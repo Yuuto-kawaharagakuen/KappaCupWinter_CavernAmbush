@@ -1,18 +1,8 @@
 ﻿#pragma once
+#include "MathUtil.h"
 
 namespace HitUtil
 {
-	inline float Clamp01(float value)
-	{
-		if (value < 0.0f) {
-			return 0.0f;
-		}
-		if (value > 1.0f) {
-			return 1.0f;
-		}
-		return value;
-	}
-
 	inline float ClosestSegmentSegment(
 		const Vector3& p1, const Vector3& q1,
 		const Vector3& p2, const Vector3& q2,
@@ -32,26 +22,26 @@ namespace HitUtil
 		}
 		if (a <= epsilon) {
 			s = 0.0f;
-			t = Clamp01(f / e);
+			t = MathUtil::Clamp01(f / e);
 		}
 		else {
 			float c = d1.Dot(r);
 			if (e <= epsilon) {
 				t = 0.0f;
-				s = Clamp01(-c / a);
+				s = MathUtil::Clamp01(-c / a);
 			}
 			else {
 				float b = d1.Dot(d2);
 				float denom = a * e - b * b;
-				s = denom > epsilon ? Clamp01((b * f - c * e) / denom) : 0.0f;
+				s = denom > epsilon ? MathUtil::Clamp01((b * f - c * e) / denom) : 0.0f;
 				t = (b * s + f) / e;
 				if (t < 0.0f) {
 					t = 0.0f;
-					s = Clamp01(-c / a);
+					s = MathUtil::Clamp01(-c / a);
 				}
 				else if (t > 1.0f) {
 					t = 1.0f;
-					s = Clamp01((b - c) / a);
+					s = MathUtil::Clamp01((b - c) / a);
 				}
 			}
 		}

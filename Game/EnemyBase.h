@@ -17,18 +17,6 @@ public:
 	{
 		return m_position;
 	}
-	void SetRotation(const Quaternion& rotation)
-	{
-		m_rotation = rotation;
-	}
-	int GetHp() const
-	{
-		return m_hp;
-	}
-	int GetMaxHp() const
-	{
-		return m_maxHp;
-	}
 	bool IsDead() const
 	{
 		return m_hp <= 0;
@@ -53,6 +41,7 @@ protected:
 	Vector3 m_position = Vector3::Zero;
 	Quaternion m_rotation = Quaternion::Identity;
 	Vector3 m_moveSpeed = Vector3::Zero;
+	float m_deathAnimationTime = 0.0f;
 
 private:
 	void UpdateDeath();

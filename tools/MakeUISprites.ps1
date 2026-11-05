@@ -102,3 +102,31 @@ Save-Png $bmp $g "UI_RingBack"
 $bmp, $g = New-Canvas 256 256
 $g.DrawArc((New-Object System.Drawing.Pen ([System.Drawing.Color]::White), 14), 30, 30, 196, 196, -90 - 15, 30)
 Save-Png $bmp $g "UI_RingSegment"
+
+$bmp, $g = New-Canvas 1920 1080
+$cx = 960; $cy = 540; $r = 470
+$mask = New-Object System.Drawing.Drawing2D.GraphicsPath
+$mask.FillMode = [System.Drawing.Drawing2D.FillMode]::Alternate
+$mask.AddRectangle((New-Object System.Drawing.RectangleF 0, 0, 1920, 1080))
+$mask.AddEllipse($cx - $r, $cy - $r, $r * 2, $r * 2)
+$g.FillPath((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 0, 0, 0))), $mask)
+for ($i = 0; $i -lt 40; $i++) {
+	$a = [int](150 * (1.0 - $i / 40.0) * (1.0 - $i / 40.0))
+	$rr = $r - $i
+	$g.DrawEllipse((New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb($a, 0, 0, 0)), 1.5), $cx - $rr, $cy - $rr, $rr * 2, $rr * 2)
+}
+$thin = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(230, 0, 0, 0)), 2
+$thick = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(240, 0, 0, 0)), 8
+$g.DrawLine($thin, $cx - $r, $cy, $cx + $r, $cy)
+$g.DrawLine($thin, $cx, $cy - $r, $cx, $cy + $r)
+$g.DrawLine($thick, $cx - $r, $cy, $cx - 170, $cy)
+$g.DrawLine($thick, $cx + 170, $cy, $cx + $r, $cy)
+$g.DrawLine($thick, $cx, $cy + 170, $cx, $cy + $r)
+for ($i = 1; $i -le 4; $i++) {
+	$d = $i * 36
+	$g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(230, 0, 0, 0))), $cx + $d - 3, $cy - 3, 6, 6)
+	$g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(230, 0, 0, 0))), $cx - $d - 3, $cy - 3, 6, 6)
+	$g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(230, 0, 0, 0))), $cx - 3, $cy + $d - 3, 6, 6)
+}
+$g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 255, 40, 30))), $cx - 4, $cy - 4, 8, 8)
+Save-Png $bmp $g "UI_Scope"

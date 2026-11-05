@@ -1,6 +1,7 @@
 ﻿#include "stdafx.h"
 #include "PlayerUI.h"
 #include "Player.h"
+#include "MathUtil.h"
 
 namespace
 {
@@ -8,6 +9,8 @@ namespace
 	const Vector4 TEXT_SHADOW_COLOR = { 0.0f, 0.0f, 0.0f, 0.55f };
 	const float TEXT_SHADOW_OFFSET = 2.0f;
 	const float DIGIT_WIDTH = 33.0f;
+	const float SCOPE_FADE_START = 0.85f;
+	const float CROSSHAIR_HIDE_AIM_RATE = 0.3f;
 
 	const Vector3 VIGNETTE_POSITION = { 0.0f, 0.0f, 0.0f };
 	const Vector2 VIGNETTE_SIZE = { 1920.0f, 1080.0f };
@@ -117,16 +120,6 @@ namespace
 		return { color.x, color.y, color.z, color.w * alpha };
 	}
 
-	float Damp(float current, float target, float speed, float deltaTime)
-	{
-		return target + (current - target) * expf(-speed * deltaTime);
-	}
-
-	float Saturate(float value)
-	{
-		return value < 0.0f ? 0.0f : (value > 1.0f ? 1.0f : value);
-	}
-
 	int CountDigits(int value)
 	{
 		int digits = 1;
@@ -174,6 +167,7 @@ bool PlayerUI::Start()
 	InitSprite(m_vignette, "Assets/sprite/UI_Vignette.DDS", VIGNETTE_SIZE, VIGNETTE_POSITION);
 	m_vignette.SetMulColor(WithAlpha(VIGNETTE_COLOR, 0.0f));
 	m_vignette.Update();
+	InitSprite(m_scope, "Assets/sprite/UI_Scope.DDS", VIGNETTE_SIZE, VIGNETTE_POSITION);
 
 	InitHp();
 	InitAmmo();
@@ -303,11 +297,12 @@ void PlayerUI::Update()
 	UpdateStatus(deltaTime);
 	UpdateReload(deltaTime);
 	UpdateDamagePopups(deltaTime);
+	UpdateScope();
 }
 
 void PlayerUI::UpdateVignette(float deltaTime)
 {
-	m_damageFlash = Damp(m_damageFlash, 0.0f, DAMAGE_FLASH_DECAY, deltaTime);
+	m_damageFlash = MathUtil::Damp(m_damageFlash, 0.0f, DAMAGE_FLASH_DECAY, deltaTime);
 
 	float alpha = m_damageFlash * DAMAGE_FLASH_ALPHA;
 	float rate = static_cast<float>(m_player->GetHp()) / static_cast<float>(m_player->GetMaxHp());
@@ -315,7 +310,7 @@ void PlayerUI::UpdateVignette(float deltaTime)
 		m_lowHpPulse += deltaTime * LOW_HP_PULSE_SPEED;
 		alpha += LOW_HP_ALPHA * (0.6f + 0.4f * sinf(m_lowHpPulse));
 	}
-	m_vignette.SetMulColor(WithAlpha(VIGNETTE_COLOR, Saturate(alpha)));
+	m_vignette.SetMulColor(WithAlpha(VIGNETTE_COLOR, MathUtil::Clamp01(alpha)));
 	m_vignette.Update();
 }
 
@@ -335,7 +330,7 @@ void PlayerUI::UpdateHp(float deltaTime)
 	}
 	m_lastHp = hp;
 
-	m_hpRate = Damp(m_hpRate, targetRate, HP_RATE_SPEED, deltaTime);
+	m_hpRate = MathUtil::Damp(m_hpRate, targetRate, HP_RATE_SPEED, deltaTime);
 	if (m_hpLagDelay > 0.0f) {
 		m_hpLagDelay -= deltaTime;
 	}
@@ -345,7 +340,7 @@ void PlayerUI::UpdateHp(float deltaTime)
 	if (m_hpLagRate < m_hpRate) {
 		m_hpLagRate = m_hpRate;
 	}
-	m_hpShake = Damp(m_hpShake, 0.0f, HP_SHAKE_DECAY, deltaTime);
+	m_hpShake = MathUtil::Damp(m_hpShake, 0.0f, HP_SHAKE_DECAY, deltaTime);
 
 	float shakeX = sinf(m_hpShake * 60.0f) * m_hpShake * HP_SHAKE_POWER;
 	Vector3 shake = MakePosition(shakeX, 0.0f);
@@ -379,14 +374,14 @@ void PlayerUI::UpdateAmmo(float deltaTime)
 		m_ammoPunch = 1.0f;
 	}
 	m_lastAmmo = ammo;
-	m_ammoPunch = Damp(m_ammoPunch, 0.0f, AMMO_PUNCH_DECAY, deltaTime);
+	m_ammoPunch = MathUtil::Damp(m_ammoPunch, 0.0f, AMMO_PUNCH_DECAY, deltaTime);
 
 	for (int i = 0; i < AMMO_PIP_NUM; i++) {
 		float x = AMMO_PIP_RIGHT - (AMMO_PIP_NUM - 1 - i) * AMMO_PIP_SPACING;
 		float pop = 0.0f;
 		if (m_ammoPipPop[i] > 0.0f) {
 			m_ammoPipPop[i] -= deltaTime;
-			pop = Saturate(m_ammoPipPop[i] / AMMO_PIP_POP_TIME);
+			pop = MathUtil::Clamp01(m_ammoPipPop[i] / AMMO_PIP_POP_TIME);
 		}
 		bool isFilled = i < ammo;
 		Vector4 color = isFilled ? AMMO_PIP_COLOR : AMMO_PIP_EMPTY_COLOR;
@@ -432,13 +427,13 @@ void PlayerUI::UpdateAmmo(float deltaTime)
 
 void PlayerUI::UpdateCrosshair(float deltaTime)
 {
-	m_isCrosshairVisible = !m_player->IsDiving() && !m_player->IsSwitching();
+	m_isCrosshairVisible = !m_player->IsDiving() && !m_player->IsSwitching() && m_player->GetAimRate() < CROSSHAIR_HIDE_AIM_RATE;
 
 	float targetSpread = m_player->IsMoving() ? CROSS_MOVE_SPREAD : 0.0f;
 	if (m_player->ConsumeShotFlag()) {
 		m_spread = 1.0f;
 	}
-	m_spread = Damp(m_spread, targetSpread, CROSS_SPREAD_DECAY, deltaTime);
+	m_spread = MathUtil::Damp(m_spread, targetSpread, CROSS_SPREAD_DECAY, deltaTime);
 
 	float gap = CROSS_GAP + m_spread * CROSS_SPREAD_GAP;
 	const Vector3 directions[] = { { 0.0f, 1.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } };
@@ -451,7 +446,7 @@ void PlayerUI::UpdateCrosshair(float deltaTime)
 	if (m_hitTimer > 0.0f) {
 		m_hitTimer -= deltaTime;
 	}
-	float hitRate = Saturate(m_hitTimer / HIT_TIME);
+	float hitRate = MathUtil::Clamp01(m_hitTimer / HIT_TIME);
 	const Vector3 hitDirections[] = { { -0.7071f, 0.7071f, 0.0f }, { -0.7071f, -0.7071f, 0.0f }, { 0.7071f, -0.7071f, 0.0f }, { 0.7071f, 0.7071f, 0.0f } };
 	Vector4 hitColor = WithAlpha(m_isHitKill ? HIT_KILL_COLOR : HIT_COLOR, hitRate);
 	for (int i = 0; i < CROSS_LINE_NUM; i++) {
@@ -465,7 +460,7 @@ void PlayerUI::UpdateCrosshair(float deltaTime)
 void PlayerUI::UpdateStatus(float deltaTime)
 {
 	float target = m_player->IsDiving() ? 1.0f : 0.0f;
-	m_statusAlpha = Damp(m_statusAlpha, target, STATUS_FADE_SPEED, deltaTime);
+	m_statusAlpha = MathUtil::Damp(m_statusAlpha, target, STATUS_FADE_SPEED, deltaTime);
 
 	Vector3 slide = MakePosition(0.0f, (1.0f - m_statusAlpha) * STATUS_SLIDE);
 	m_statusPill.SetPosition(STATUS_PILL_POSITION + slide);
@@ -480,7 +475,7 @@ void PlayerUI::UpdateStatus(float deltaTime)
 void PlayerUI::UpdateReload(float deltaTime)
 {
 	float target = m_player->IsReloading() ? 1.0f : 0.0f;
-	m_reloadAlpha = Damp(m_reloadAlpha, target, RELOAD_FADE_SPEED, deltaTime);
+	m_reloadAlpha = MathUtil::Damp(m_reloadAlpha, target, RELOAD_FADE_SPEED, deltaTime);
 
 	int ammo = m_player->GetAmmo();
 	if (m_lastReloadAmmo >= 0 && ammo > m_lastReloadAmmo && m_player->IsReloading()) {
@@ -499,7 +494,7 @@ void PlayerUI::UpdateReload(float deltaTime)
 		float pop = 0.0f;
 		if (m_ringSegmentPop[i] > 0.0f) {
 			m_ringSegmentPop[i] -= deltaTime;
-			pop = Saturate(m_ringSegmentPop[i] / RING_POP_TIME);
+			pop = MathUtil::Clamp01(m_ringSegmentPop[i] / RING_POP_TIME);
 		}
 		float scale = ringScale * (1.0f + pop * RING_POP_SCALE);
 		Vector4 color = i < ammo ? RING_FILLED_COLOR : RING_EMPTY_COLOR;
@@ -543,10 +538,10 @@ void PlayerUI::UpdateDamagePopups(float deltaTime)
 		g_camera3D->CalcScreenPositionFromWorldPosition(screen, popup.worldPosition);
 
 		float life = popup.timer / POPUP_LIFE;
-		float pop = 1.0f + 0.5f * (1.0f - Saturate(popup.timer / POPUP_POP_TIME));
+		float pop = 1.0f + 0.5f * (1.0f - MathUtil::Clamp01(popup.timer / POPUP_POP_TIME));
 		float scale = popup.scale * pop;
 		float rise = POPUP_RISE * (1.0f - (1.0f - life) * (1.0f - life));
-		float alpha = 1.0f - Saturate((popup.timer - POPUP_FADE_START) / (POPUP_LIFE - POPUP_FADE_START));
+		float alpha = 1.0f - MathUtil::Clamp01((popup.timer - POPUP_FADE_START) / (POPUP_LIFE - POPUP_FADE_START));
 		float width = popup.digits * DIGIT_WIDTH * scale;
 
 		Vector4 color = popup.scale > POPUP_SCALE ? POPUP_KILL_COLOR : POPUP_COLOR;
@@ -557,8 +552,18 @@ void PlayerUI::UpdateDamagePopups(float deltaTime)
 	}
 }
 
+void PlayerUI::UpdateScope()
+{
+	m_scopeAlpha = MathUtil::Clamp01((m_player->GetAimRate() - SCOPE_FADE_START) / (1.0f - SCOPE_FADE_START));
+	m_scope.SetMulColor(WithAlpha(WHITE, m_scopeAlpha));
+	m_scope.Update();
+}
+
 void PlayerUI::Render(RenderContext& rc)
 {
+	if (m_scopeAlpha > 0.0f) {
+		m_scope.Draw(rc);
+	}
 	m_vignette.Draw(rc);
 
 	m_hpShade.Draw(rc);

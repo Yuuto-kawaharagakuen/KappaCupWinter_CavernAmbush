@@ -2,6 +2,7 @@
 #include "GameOver.h"
 #include "Game.h"
 #include "Fade.h"
+#include "ObjectNames.h"
 
 namespace
 {
@@ -26,7 +27,7 @@ GameOver::~GameOver()
 
 bool GameOver::Start()
 {
-	m_fade = FindGO<Fade>("fade");
+	m_fade = FindGO<Fade>(ObjectName::FADE);
 
 	m_background.Init("Assets/sprite/UI_White.DDS", SCREEN_WIDTH, SCREEN_HEIGHT);
 	m_background.SetMulColor(BACKGROUND_COLOR);
@@ -47,7 +48,7 @@ void GameOver::Update()
 {
 	if (m_isRetrying) {
 		if (m_fade->IsBlack()) {
-			NewGO<Game>(0, "game");
+			NewGO<Game>(0, ObjectName::GAME);
 			m_fade->StartFadeIn();
 			DeleteGO(this);
 		}

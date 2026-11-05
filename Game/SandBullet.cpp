@@ -2,16 +2,15 @@
 #include "SandBullet.h"
 #include "EnemyBase.h"
 #include "PlayerUI.h"
+#include "ObjectNames.h"
 
 namespace
 {
 	const float BULLET_SPEED = 3000.0f;
 	const float BULLET_RANGE = 800.0f;
 	const float BULLET_RADIUS = 10.0f;
-	const char* const COLLISION_NAME = "player_bullet";
-	const char* const ENEMY_NAME = "enemy";
+	const char* const MODEL_PATH = "Assets/modelData/SandBullet.tkm";
 	const int BULLET_DAMAGE = 10;
-	const char* const PLAYER_UI_NAME = "playerUI";
 }
 
 SandBullet::SandBullet()
@@ -20,9 +19,6 @@ SandBullet::SandBullet()
 
 SandBullet::~SandBullet()
 {
-	if (m_collision != nullptr) {
-		DeleteGO(m_collision);
-	}
 }
 
 void SandBullet::Init(const Vector3& position, const Vector3& direction)
@@ -34,12 +30,7 @@ void SandBullet::Init(const Vector3& position, const Vector3& direction)
 
 bool SandBullet::Start()
 {
-	m_collision = NewGO<CollisionObject>(0);
-	m_collision->CreateSphere(m_position, Quaternion::Identity, BULLET_RADIUS);
-	m_collision->SetName(COLLISION_NAME);
-	m_collision->SetIsEnableAutoDelete(false);
-
-	m_model.Init("Assets/modelData/SandBullet.tkm");
+	m_model.Init(MODEL_PATH);
 	m_model.SetShadowCasterFlag(false);
 	m_model.SetPosition(m_position);
 	m_model.Update();
@@ -64,7 +55,7 @@ void SandBullet::Update()
 
 	EnemyBase* hitEnemy = nullptr;
 	float nearestRate = 1.0f;
-	QueryGOs<EnemyBase>(ENEMY_NAME, [&](EnemyBase* enemy) {
+	QueryGOs<EnemyBase>(ObjectName::ENEMY, [&](EnemyBase* enemy) {
 		float rate = 0.0f;
 		if (enemy->HitTest(m_position, end, BULLET_RADIUS, rate) && rate <= nearestRate) {
 			nearestRate = rate;
@@ -75,7 +66,7 @@ void SandBullet::Update()
 
 	if (hitEnemy != nullptr) {
 		if (hitEnemy->Damage(BULLET_DAMAGE, m_direction)) {
-			PlayerUI* playerUI = FindGO<PlayerUI>(PLAYER_UI_NAME);
+			PlayerUI* playerUI = FindGO<PlayerUI>(ObjectName::PLAYER_UI);
 			if (playerUI != nullptr) {
 				playerUI->NotifyHit(m_position + (end - m_position) * nearestRate, BULLET_DAMAGE, hitEnemy->IsDead());
 			}
@@ -90,7 +81,6 @@ void SandBullet::Update()
 
 	m_position = next;
 	m_traveled += step;
-	m_collision->SetPosition(m_position);
 	m_model.SetPosition(m_position);
 	m_model.Update();
 

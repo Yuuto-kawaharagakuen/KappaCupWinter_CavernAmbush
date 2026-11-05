@@ -16,10 +16,11 @@
   - Balaclava: Shedmon
   - KRSV VECTOR: h1ggs
 
-### Blaster Kit（プレイヤーの銃 blaster-g）
-- 作者: Kenney（www.kenney.nl）
-- 配布元: https://kenney.nl/assets/blaster-kit
-- ライセンス: CC0
+### 3d assault rifle weapon（プレイヤーの銃 M4A4）
+- 作者: kdrkndmr24
+- 配布元: https://www.cgtrader.com/free-3d-models/military/gun/3d-assault-rifle-weapon
+- ライセンス: CGTrader Royalty Free License（no AI）
+- ゲーム用に変更: 縮尺と向きの調整、マテリアルの差し替え（ambientCG の Metal046B / Leather026）
 
 ## Textures
-- ambientCG（Ground079S / Rock060 / Rock061）: https://ambientcg.com/ （CC0）
+- ambientCG（Ground079S / Rock060 / Rock061 / Metal046B / Leather026）: https://ambientcg.com/ （CC0）
