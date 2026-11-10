@@ -333,7 +333,6 @@ namespace nsK2EngineLow {
         auto newNodePtr = std::make_shared<SNode>();
         newNodePtr->type = enEntityType_Node;
         newNodePtr->centerPos = centerPos;
-        newNodePtr->leafArray = leafArray;
         auto newNode = static_cast<SNode*>(newNodePtr.get());
 
         // 分散しているので、共分散行列を利用して
@@ -369,9 +368,6 @@ namespace nsK2EngineLow {
             // これはノードなのでさらに潜る。
             // 左に潜る？右に潜る？
             SNode* node = static_cast<SNode*>(entityPtr.get());
-            for (SEntityPtr& entity : node->leafArray) {
-                 
-            }
             float t = Dot(pos, node->plane.normal);
              if (t < node->plane.distance) {
                 // 左に潜る。
