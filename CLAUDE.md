@@ -19,7 +19,7 @@
   - 床（砂）は基本的にどこでも潜れる。オブジェクト（岩・木箱など）の上は潜れない
 - プレイヤーの操作は 移動・視点 に加えて「潜行／浮上」「リーン」「リロード」「射撃」のみ。空は飛べない
   - リロードは潜行中だけボタンで行える（浮上中は不可）。1発ずつ補充され、浮上すると中断（入った分は残る）
-  - ボタン: 潜行／浮上 B、射撃 RB2、スコープをのぞく LB2（押している間。ズーム3.5倍・視点と移動が遅くなる）、リロード X、リーン LB1／RB1
+  - ボタン: 潜行／浮上 B、射撃 RB2、スコープをのぞく LB2（押している間。ズーム1.5倍・視点と移動が遅くなる）、リロード X、リーン LB1／RB1
 - ステージ1 → ステージ2（隊長がカギを落とす）→ ボス部屋（ジェットパックで浮遊するボス）
   - 隊長: 雑魚兵の基本の動きに加えて、グレネードと物陰からのリーン撃ちを使う（雑魚兵と別種類として数えるため）
   - 雑魚兵はグレネードを使わない
@@ -60,15 +60,18 @@
 - 書き出し後にできる `MaxData\export_report.txt` と `*_backup.max` は消す
 - プレイヤーの銃: `Downloads\m4a4.fbx` を `tools\3dsMax\MakeM4.ms` で `M4.max` にして `names:M4A4 flat:true` で書き出す（原点はスコープの接眼部、テクスチャは `MaxData\textures\m4\`）
 - 潜行中の砂の盛り上がり: `MakeSandMound.ms`
+- 門の横の穴: `MakePropTextures.ps1` で `T_Hole` を作ってから `MakeHole.ms` で `Hole.max` にして `names:StageHole` で書き出す
+- マップに置く小物（`Prop_*`）: `Downloads` の4つの FBX（砂袋の壁は ProOptimizer で頂点を12%に削減）を `MakeProps.ms` で `Props.max` にして `ExportTkm.ms` で書き出す（原点は底面の中心、テクスチャは `MaxData\textures\props\` から `-w 1024 -h 1024` を足して DDS にする。木箱・木樽は FBX にテクスチャが無いので `tools\MakePropTextures.ps1` で自作し、`MakeProps.ms` より先に実行する）。配置は `MakeStage1.ms` の `propClusters`（Point の名前が tkm の名前になり、当たり判定も付く）
 - 敵（SWAT）: 元データは `Documents\Swat`（CGTrader、Mixamo の骨）。`MakeSwat.ms` で `Swat.max` を作る（銃を右手に合体・頂点を18%に削減・待機/歩き/撃つ/倒れる/見回す/構えのキーを打つ）。テクスチャは `MaxData\textures\swat\` から 1K の DDS にする（敵は数が多いので軽さ優先）
   - `ExportTkm.ms -mxsString file:Swat.max -mxsString names:SwatSoldier -mxsString flat:true`（頂点の多いモデルは flat:true にする。false だと読み込み時の法線スムージングで Debug がほぼ止まる）
-  - `ExportTka.ms -mxsString file:Swat.max -mxsString root:SWAT -mxsString clips:Swat_Idle:0:59,Swat_Walk:100:131,Swat_Shoot:200:209,Swat_Death:300:335,Swat_Look:400:489,Swat_Aim:500:529` → `Game\Assets\animData\`（構え・撃つは IK で両手を銃に合わせている）
+  - `ExportTka.ms -mxsString file:Swat.max -mxsString root:SWAT -mxsString clips:Swat_Idle:0:59,Swat_Walk:100:131,Swat_Shoot:200:209,Swat_Death:300:347,Swat_Look:400:489,Swat_Aim:500:529` → `Game\Assets\animData\`（構え・撃つは IK で両手を銃に合わせている）
   - ProOptimizer などモディファイアのボタン操作は、バッチでも `select` → `max modify mode` → `modPanel.setCurrentObject` してからなら動く
 - UI の画像は `tools\MakeUISprites.ps1` で作る（`Game\Assets\sprite\UI_*.DDS`）
 
 ## エンジン利用時の注意
 - エンジンのソースは Shift-JIS。基本的に編集しない（必要なときは相談してから）
   - 変更済み: `k2EngineLow.cpp` の左上のFPS表示は `K2_SHOW_FPS` を定義したときだけ出す
+  - 変更済み: `geometry/BSP.cpp` の `WalkTree` の空ループと、ノードへの `leafArray` のコピーを削除（Debug での tkm 法線スムージングが頂点数の2乗で遅くなっていたため。結果は同じ）
 - 当たり判定のワイヤーフレームは Debug ビルドでのみ表示される
 - CharacterController の座標は足元（カプセルの下端）
 - `FontRender::SetText()` は渡した文字列を書式として `swprintf_s` し直す。`%` を表示したいときは `%%` にして渡す（そのままだと実行時エラー）
