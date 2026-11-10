@@ -10,6 +10,12 @@ namespace
 	const float START_YAW = 90.0f;
 	const float CAPSULE_RADIUS = 30.0f;
 	const float CAPSULE_HEIGHT = 110.0f;
+	const float DIVE_CAPSULE_HEIGHT = 20.0f;
+	const float HEADROOM_CHECK_RADIUS = 26.0f;
+	const float DIVE_HEAD_CHECK_RADIUS = 10.0f;
+	const float DIVE_HEAD_CHECK_TOP = 60.0f;
+	const float CEILING_CHECK_START = 15.0f;
+	const float CEILING_CHECK_LENGTH = 3000.0f;
 	const float EYE_HEIGHT = 160.0f;
 	const float WALK_SPEED = 400.0f;
 	const float DIVE_SPEED = 500.0f;
@@ -107,6 +113,11 @@ Player::~Player()
 bool Player::Start()
 {
 	m_charaCon.Init(CAPSULE_RADIUS, CAPSULE_HEIGHT, m_position);
+	m_diveCharaCon.Init(CAPSULE_RADIUS, DIVE_CAPSULE_HEIGHT, m_position);
+	m_diveCharaCon.RemoveRigidBoby();
+	m_headroomCollider.Create(HEADROOM_CHECK_RADIUS);
+	m_diveHeadCollider.Create(DIVE_HEAD_CHECK_RADIUS);
+	m_safePosition = m_position;
 	m_ammo = MAX_AMMO;
 	m_hp = MAX_HP;
 	m_yaw = START_YAW;
@@ -290,14 +301,97 @@ void Player::UpdateState()
 	if (IsSwitching()) {
 		return;
 	}
-	if (g_pad[0]->IsTrigger(enButtonB)) {
-		if (m_state == enState_Surface) {
-			m_state = enState_Dive;
-		}
-		else {
-			m_state = enState_Surface;
-		}
+	if (!g_pad[0]->IsTrigger(enButtonB)) {
+		return;
 	}
+	if (m_state == enState_Surface) {
+		m_state = enState_Dive;
+		SetDiveBody(true);
+		return;
+	}
+	if (!HasHeadroom()) {
+		m_isSurfaceBlocked = true;
+		return;
+	}
+	m_state = enState_Surface;
+	SetDiveBody(false);
+}
+
+CharacterController& Player::GetCharaCon()
+{
+	return m_isDiveBody ? m_diveCharaCon : m_charaCon;
+}
+
+void Player::SetDiveBody(bool isDive)
+{
+	if (m_isDiveBody == isDive) {
+		return;
+	}
+	GetCharaCon().RemoveRigidBoby();
+	m_isDiveBody = isDive;
+	CharacterController& next = GetCharaCon();
+	next.SetPosition(m_position);
+	PhysicsWorld::GetInstance()->AddRigidBody(*next.GetRigidBody());
+}
+
+bool Player::HasHeadroom() const
+{
+	float diveTop = DIVE_CAPSULE_HEIGHT + CAPSULE_RADIUS * 2.0f;
+	float surfaceTop = CAPSULE_HEIGHT + CAPSULE_RADIUS * 2.0f;
+	btTransform start, end;
+	start.setIdentity();
+	start.setOrigin(btVector3(m_position.x, m_position.y + diveTop - HEADROOM_CHECK_RADIUS, m_position.z));
+	end.setIdentity();
+	end.setOrigin(btVector3(m_position.x, m_position.y + surfaceTop - HEADROOM_CHECK_RADIUS, m_position.z));
+	CameraSweepResult result;
+	PhysicsWorld::GetInstance()->ConvexSweepTest(static_cast<const btConvexShape*>(m_headroomCollider.GetBody()), start, end, result);
+	return !result.isHit;
+}
+
+bool Player::IsDiveHeadBlocked(const Vector3& from, const Vector3& to) const
+{
+	Vector3 move = to - from;
+	move.y = 0.0f;
+	if (move.LengthSq() < FLT_EPSILON) {
+		return false;
+	}
+	float headOffset = DIVE_HEAD_CHECK_TOP - DIVE_HEAD_CHECK_RADIUS;
+	btTransform start, end;
+	start.setIdentity();
+	start.setOrigin(btVector3(from.x, from.y + headOffset, from.z));
+	end.setIdentity();
+	end.setOrigin(btVector3(to.x, to.y + headOffset, to.z));
+	CameraSweepResult result;
+	PhysicsWorld::GetInstance()->ConvexSweepTest(static_cast<const btConvexShape*>(m_diveHeadCollider.GetBody()), start, end, result);
+	return result.isHit;
+}
+
+bool Player::HasCeilingAbove(const Vector3& position) const
+{
+	btTransform start, end;
+	start.setIdentity();
+	start.setOrigin(btVector3(position.x, position.y + CEILING_CHECK_START, position.z));
+	end.setIdentity();
+	end.setOrigin(btVector3(position.x, position.y + CEILING_CHECK_LENGTH, position.z));
+	CameraSweepResult result;
+	PhysicsWorld::GetInstance()->ConvexSweepTest(static_cast<const btConvexShape*>(m_diveHeadCollider.GetBody()), start, end, result);
+	return result.isHit;
+}
+
+Vector3 Player::LimitDiveMove(const Vector3& from, const Vector3& to) const
+{
+	if (!IsDiveHeadBlocked(from, to)) {
+		return to;
+	}
+	Vector3 slideX = { to.x, to.y, from.z };
+	if (!IsDiveHeadBlocked(from, slideX)) {
+		return slideX;
+	}
+	Vector3 slideZ = { from.x, to.y, to.z };
+	if (!IsDiveHeadBlocked(from, slideZ)) {
+		return slideZ;
+	}
+	return { from.x, to.y, from.z };
 }
 
 void Player::Rotate()
@@ -345,18 +439,35 @@ void Player::Move()
 	if (inputDir.LengthSq() > 1.0f) {
 		inputDir.Normalize();
 	}
-	m_isMoving = inputDir.LengthSq() > MOVE_THRESHOLD && m_charaCon.IsOnGround();
+	CharacterController& charaCon = GetCharaCon();
+	m_isMoving = inputDir.LengthSq() > MOVE_THRESHOLD && charaCon.IsOnGround();
 
 	float speed = IsDiving() ? DIVE_SPEED : WALK_SPEED * (1.0f - (1.0f - ADS_MOVE_RATE) * GetAimRate());
 	m_moveSpeed.x = inputDir.x * speed;
 	m_moveSpeed.z = inputDir.z * speed;
 
-	if (m_charaCon.IsOnGround()) {
+	if (charaCon.IsOnGround()) {
 		m_moveSpeed.y = 0.0f;
 	}
 	m_moveSpeed.y -= GRAVITY * deltaTime;
 
-	m_position = m_charaCon.Execute(m_moveSpeed, deltaTime);
+	Vector3 prevPosition = m_position;
+	m_position = charaCon.Execute(m_moveSpeed, deltaTime);
+	if (m_isDiveBody) {
+		Vector3 limited = LimitDiveMove(prevPosition, m_position);
+		if (limited.x != m_position.x || limited.z != m_position.z) {
+			m_position = limited;
+			charaCon.SetPosition(m_position);
+		}
+	}
+	if (HasCeilingAbove(m_position)) {
+		m_safePosition = m_position;
+	}
+	else {
+		m_position = m_safePosition;
+		m_moveSpeed = Vector3::Zero;
+		charaCon.SetPosition(m_position);
+	}
 }
 
 void Player::UpdateCamera()

@@ -114,6 +114,7 @@ namespace
 	const float MESSAGE_SCALE = 0.85f;
 	const float MESSAGE_CHAR_WIDTH = 42.0f;
 	const float MESSAGE_FADE_TIME = 0.4f;
+	const float SURFACE_BLOCKED_MESSAGE_TIME = 1.2f;
 	const Vector4 MESSAGE_COLOR = { 1.0f, 0.85f, 0.45f, 1.0f };
 
 	Vector3 MakePosition(float x, float y)
@@ -314,6 +315,9 @@ void PlayerUI::Update()
 	}
 	float deltaTime = g_gameTime->GetFrameDeltaTime();
 
+	if (m_player->ConsumeSurfaceBlockedFlag()) {
+		ShowMessage(L"天井が低くて浮上できない", SURFACE_BLOCKED_MESSAGE_TIME);
+	}
 	UpdateVignette(deltaTime);
 	UpdateHp(deltaTime);
 	UpdateAmmo(deltaTime);

@@ -78,10 +78,22 @@ public:
 		m_isShot = false;
 		return isShot;
 	}
+	bool ConsumeSurfaceBlockedFlag()
+	{
+		bool isBlocked = m_isSurfaceBlocked;
+		m_isSurfaceBlocked = false;
+		return isBlocked;
+	}
 
 private:
 	void UpdateDamage();
 	void UpdateState();
+	CharacterController& GetCharaCon();
+	void SetDiveBody(bool isDive);
+	bool HasHeadroom() const;
+	bool IsDiveHeadBlocked(const Vector3& from, const Vector3& to) const;
+	Vector3 LimitDiveMove(const Vector3& from, const Vector3& to) const;
+	bool HasCeilingAbove(const Vector3& position) const;
 	void UpdateAim();
 	void UpdateReload();
 	void Shoot();
@@ -94,11 +106,17 @@ private:
 	void UpdateMound();
 
 	CharacterController m_charaCon;
+	CharacterController m_diveCharaCon;
+	bool m_isDiveBody = false;
+	bool m_isSurfaceBlocked = false;
+	SphereCollider m_headroomCollider;
+	SphereCollider m_diveHeadCollider;
 	SphereCollider m_cameraCollider;
 	ModelRender m_gunModel;
 	ModelRender m_moundModel;
 	EnState m_state = enState_Surface;
 	Vector3 m_position = Vector3::Zero;
+	Vector3 m_safePosition = Vector3::Zero;
 	Vector3 m_moveSpeed = Vector3::Zero;
 	Vector3 m_forward = Vector3::AxisZ;
 	Vector3 m_right = Vector3::AxisX;
