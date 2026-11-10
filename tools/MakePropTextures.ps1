@@ -289,6 +289,66 @@ public static class PropTextureMaker
 		}
 		Save(path, p, stride);
 	}
+
+	public static void LanternMetal(string path)
+	{
+		int stride = SIZE * 3;
+		byte[] p = new byte[stride * SIZE];
+		double[] c = new double[3];
+		for (int y = 0; y < SIZE; y++)
+		{
+			for (int x = 0; x < SIZE; x++)
+			{
+				Metal(c, x * 0.5, y * 0.5, 0.42);
+				Mix(c, 40.0, 30.0, 22.0, 0.25);
+				Put(p, stride, x, y, c);
+			}
+		}
+		Save(path, p, stride);
+	}
+
+	public static void LanternGlass(string path)
+	{
+		int stride = SIZE * 3;
+		byte[] p = new byte[stride * SIZE];
+		double[] c = new double[3];
+		for (int y = 0; y < SIZE; y++)
+		{
+			for (int x = 0; x < SIZE; x++)
+			{
+				double v = (y + 0.5) / SIZE;
+				double glow = 1.0 - Math.Abs(v - 0.55) * 1.4;
+				double n = Fbm(x * 0.01, y * 0.01, 121, 3);
+				double t = Clamp(glow * 0.8 + (n - 0.5) * 0.3);
+				c[0] = Lerp(150.0, 255.0, t);
+				c[1] = Lerp(70.0, 205.0, t);
+				c[2] = Lerp(20.0, 110.0, t);
+				Put(p, stride, x, y, c);
+			}
+		}
+		Save(path, p, stride);
+	}
+
+	public static void Rope(string path)
+	{
+		int stride = SIZE * 3;
+		byte[] p = new byte[stride * SIZE];
+		double[] c = new double[3];
+		for (int y = 0; y < SIZE; y++)
+		{
+			for (int x = 0; x < SIZE; x++)
+			{
+				double twist = 0.5 + 0.5 * Math.Sin((x + y * 0.6) * 0.09);
+				double n = Fbm(x * 0.05, y * 0.05, 131, 3);
+				double t = Clamp(twist * 0.6 + n * 0.4);
+				c[0] = Lerp(45.0, 120.0, t);
+				c[1] = Lerp(33.0, 92.0, t);
+				c[2] = Lerp(22.0, 60.0, t);
+				Put(p, stride, x, y, c);
+			}
+		}
+		Save(path, p, stride);
+	}
 }
 '@
 
@@ -305,6 +365,16 @@ $barrel = Join-Path $srcDir "Prop_WoodBarrel.png"
 $hole = Join-Path $srcDir "T_Hole.png"
 [PropTextureMaker]::Hole($hole)
 
+$lanternMetal = Join-Path $srcDir "Prop_LanternMetal.png"
+$lanternGlass = Join-Path $srcDir "Prop_LanternGlass.png"
+$rope = Join-Path $srcDir "Prop_Rope.png"
+[PropTextureMaker]::LanternMetal($lanternMetal)
+[PropTextureMaker]::LanternGlass($lanternGlass)
+[PropTextureMaker]::Rope($rope)
+
 foreach ($path in @($crate, $barrel, $hole)) {
 	& $texconv -vflip -f BC7_UNORM -srgb -y -w 1024 -h 1024 -o $outDir $path | Out-Null
+}
+foreach ($path in @($lanternMetal, $lanternGlass, $rope)) {
+	& $texconv -vflip -f BC7_UNORM -srgb -y -w 256 -h 256 -o $outDir $path | Out-Null
 }
