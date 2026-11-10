@@ -14,7 +14,7 @@
 	global G_GRID_MIN = [-3900, -1600]
 	global G_GRID_MAX = [3700, 1600]
 	global G_GRID_STEP = 56.0
-	global G_SCALE = 1.53
+	global G_SCALE = 1.071
 	global G_MAX_HEIGHT = 650.0
 	global G_FALLOFF = 450.0
 	global G_OUTSIDE_DEPTH = -250.0
@@ -237,7 +237,7 @@
 
 	local gateX = 2400.0
 	while (caveSDF (gateX + 20.0) 0.0) > 80.0 do gateX += 20.0
-	local gateObj = Box name:"Gate_Stage1" length:500 width:160 height:450 pos:[(gateX + 40.0) * G_SCALE, 0, -20]
+	local gateObj = Box name:"Gate_Stage1" length:350 width:112 height:315 pos:[(gateX + 40.0) * G_SCALE, 0, -20]
 	addModifier gateObj (Uvwmap maptype:4 length:200 width:200 height:200)
 	bakeAtOrigin gateObj
 	gateObj.material = matWood
@@ -252,7 +252,45 @@
 	local root = Dummy name:"Stage1" pos:[0,0,0] boxsize:[200,200,200]
 	for o in #(floorObj, shellObj, gateObj, playerStart, hole) do o.parent = root
 
+	local propClusters = #(
+		#([-3100, 250], #(#("Prop_Crate", 0, 0, 20), #("Prop_WoodBarrel", -100, 110, 0))),
+		#([-2780, -650], #(#("Prop_Drum", 0, 0, 0), #("Prop_DrumRusty", 65, 20, 40))),
+		#([-2600, 50], #(#("Prop_Crate", 0, 0, 15), #("Prop_WoodBarrel", 110, -45, 0))),
+		#([-2400, -150], #(#("Prop_SandbagStraight", 10, 340, 90), #("Prop_SandbagStraight", 10, 340, 90, 48), #("Prop_SandbagRound", 30, -110, -90), #("Prop_SandbagRound", 30, -110, -90, 48), #("Prop_SandbagStraight", 0, -580, 90), #("Prop_SandbagStraight", 0, -580, 90, 48))),
+		#([-1650, -150], #(#("Prop_SandbagCorner", 0, 0, 45))),
+		#([-1150, 150], #(#("Prop_Crate", 0, 0, -30))),
+		#([-900, 700], #(#("Prop_SandbagCorner", 0, 0, -135))),
+		#([-650, 50], #(#("Prop_Crate", 0, 0, 25), #("Prop_WoodBarrel", 125, 55, 0))),
+		#([100, -550], #(#("Prop_UAZ", 0, 0, 98), #("Prop_JerrycanGreen", -260, 40, 15), #("Prop_JerrycanRed", -250, -5, -60))),
+		#([100, 50], #(#("Prop_Crate", 0, 0, 10), #("Prop_Crate", 30, 135, -25))),
+		#([550, 420], #(#("Prop_SandbagRound", 0, 0, -90))),
+		#([900, -250], #(#("Prop_SandbagStraight", 0, 0, 20))),
+		#([1000, 250], #(#("Prop_Crate", 0, 0, 40), #("Prop_WoodBarrel", -115, 35, 0))),
+		#([1500, -300], #(#("Prop_Crate", 0, 0, 35))),
+		#([2200, 50], #(#("Prop_Crate", 0, 0, -15), #("Prop_Drum", 115, 40, 0))),
+		#([2350, -520], #(#("Prop_UAZ", 0, 0, 35), #("Prop_JerrycanGreen", 123, 86, 20), #("Prop_JerrycanRed", 100, 119, -15))),
+		#([2500, 100], #(#("Prop_SandbagStraight", 0, 0, 90), #("Prop_SandbagStraight", 0, 0, 90, 48))),
+		#([3050, -200], #(#("Prop_Crate", 0, 0, -20), #("Prop_Drum", 120, 60, 0)))
+	)
+	local propReport = #()
+	for cluster in propClusters do
+	(
+		local center = cluster[1]
+		append propReport #(center, caveSDF center.x center.y)
+		for item in cluster[2] do
+		(
+			local wx = center.x * G_SCALE + item[2]
+			local wy = center.y * G_SCALE + item[3]
+			local wz = (floorHeight (wx / G_SCALE) (wy / G_SCALE)) * G_SCALE - 2.0 + (if item.count >= 5 then item[5] else 0.0)
+			local p = Point name:item[1] pos:[0, 0, 0] size:60 box:true cross:false
+			rotate p (angleAxis item[4] [0, 0, 1])
+			p.pos = [wx, wy, wz]
+			p.parent = root
+		)
+	)
+
 	local rep = createFile (projDir + "MaxData\\stage_report.txt")
+	for r in propReport do format "prop cluster % sdf:%\n" r[1] r[2] to:rep
 	for yy = 19 to -22 by -1 do
 	(
 		local line = ""
