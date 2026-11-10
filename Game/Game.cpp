@@ -4,7 +4,8 @@
 #include "Stage.h"
 #include "PlayerUI.h"
 #include "GameOver.h"
-#include "StageClear.h"
+#include "GameClear.h"
+#include "GameFlow.h"
 #include "Fade.h"
 #include "Soldier.h"
 #include "EnemyBullet.h"
@@ -28,7 +29,7 @@ namespace
 		float yaw;
 	};
 	const SoldierData SOLDIERS[] = {
-		{ -2356.0f, 0.0f, -2410.0f, 482.0f, 90.0f },
+		{ -2356.0f, 0.0f, -2356.0f, 0.0f, -65.0f },
 		{ -857.0f, -536.0f, -428.0f, -804.0f, 0.0f },
 		{ -321.0f, 321.0f, 321.0f, 214.0f, 90.0f },
 		{ 1339.0f, 161.0f, 1768.0f, -54.0f, -90.0f },
@@ -71,13 +72,11 @@ Game::~Game()
 
 bool Game::Start()
 {
-	m_fade = FindGO<Fade>(ObjectName::FADE);
-	if (m_fade == nullptr) {
-		m_fade = NewGO<Fade>(10, ObjectName::FADE);
-	}
+	m_fade = Fade::Get();
+	m_flow = GameFlow::Get();
 
 	m_stage = NewGO<Stage>(0, ObjectName::STAGE);
-	m_stage->Load("Assets/level3D/Stage1.tkl");
+	m_stage->Load(m_flow->GetStageLevelPath());
 
 	m_player = NewGO<Player>(0, ObjectName::PLAYER);
 	m_player->SetPosition(m_stage->GetPlayerStartPosition());
@@ -154,8 +153,12 @@ void Game::UpdateHole()
 void Game::UpdateStageClear()
 {
 	if (m_fade->IsBlack()) {
-		StageClear* stageClear = NewGO<StageClear>(0, ObjectName::STAGE_CLEAR);
-		stageClear->SetClearTime(m_clearTime);
+		if (m_flow->ClearCurrentStage(m_clearTime)) {
+			NewGO<GameClear>(0, ObjectName::GAME_CLEAR);
+		}
+		else {
+			NewGO<Game>(0, ObjectName::GAME);
+		}
 		m_fade->StartFadeIn();
 		DeleteGO(this);
 	}

@@ -3,6 +3,8 @@
 class Fade : public IGameObject
 {
 public:
+	static Fade* Get();
+
 	Fade();
 	~Fade();
 	bool Start() override;

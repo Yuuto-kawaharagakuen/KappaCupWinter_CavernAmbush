@@ -1,11 +1,22 @@
 ﻿#include "stdafx.h"
 #include "Fade.h"
+#include "ObjectNames.h"
 
 namespace
 {
-	 float FADE_TIME = 0.8f;
-	 float SCREEN_WIDTH = 1920.0f;
-	 float SCREEN_HEIGHT = 1080.0f;
+	const float FADE_TIME = 0.8f;
+	const float SCREEN_WIDTH = 1920.0f;
+	const float SCREEN_HEIGHT = 1080.0f;
+	const int FADE_PRIORITY = 10;
+}
+
+Fade* Fade::Get()
+{
+	Fade* fade = FindGO<Fade>(ObjectName::FADE);
+	if (fade == nullptr) {
+		fade = NewGO<Fade>(FADE_PRIORITY, ObjectName::FADE);
+	}
+	return fade;
 }
 
 Fade::Fade()

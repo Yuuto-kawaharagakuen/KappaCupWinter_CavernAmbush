@@ -5,6 +5,7 @@ class Player;
 class Stage;
 class PlayerUI;
 class Fade;
+class GameFlow;
 
 class Game : public IGameObject
 {
@@ -30,6 +31,7 @@ private:
 	Stage* m_stage = nullptr;
 	PlayerUI* m_playerUI = nullptr;
 	Fade* m_fade = nullptr;
+	GameFlow* m_flow = nullptr;
 	bool m_isGameOver = false;
 	float m_gameOverTimer = 0.0f;
 	float m_clearTime = 0.0f;
