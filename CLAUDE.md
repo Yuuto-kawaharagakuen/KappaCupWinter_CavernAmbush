@@ -29,7 +29,10 @@
 - HPが0でゲームオーバー、ボス撃破でクリア
 
 ## 作業ルール
-- 新規ファイルは UTF-8（BOM付き）・改行CRLF で作る
+- 新規ファイルは UTF-8（BOM付き）・改行CRLF で作る（シェーダー `.fx` だけは BOM を付けない。BOM があるとシェーダーのコンパイルが通らない）
+- 笠井への返答・説明は必ず日本語で書く
+- ゲームを起動したり画面を撮ったりしない（笠井がPCを使っている。プレイ確認は笠井が行い、スクリーンショットをくれる）
+- 進捗報告の pptx（`08_*_進捗報告*.pptx`）はリポジトリに入れない。購入素材の元データも入れない（再配布しない）
 - コードに注釈コメントは基本書かない
 - 操作はコントローラーのみ（g_pad）。キーボード・マウスは使わない
 - コードを書いたら、何を実装したか・作った関数と役割を簡潔に説明する
@@ -54,8 +57,10 @@
 
 ## ステージ・モデルの書き出し（3ds Max 2026 のバッチ）
 - `3dsmaxbatch.exe tools\3dsMax\MakeStage1.ms` → `MaxData\Stage1.max` を生成（形・縮尺はスクリプト冒頭の定数）
-- `3dsmaxbatch.exe tools\3dsMax\ExportTkm.ms -mxsString file:Stage1.max -mxsString names:Floor_Stage1,Wall_Stage1,Gate_Stage1` → tkm を書き出し、各 tkm に `tkmOptimizer.exe <in> <out>` をかける
+- `3dsmaxbatch.exe tools\3dsMax\ExportTkm.ms -mxsString file:Stage1.max -mxsString names:Floor_Stage1,Wall_Stage1,Gate_Stage1,Desert_Stage1` → tkm を書き出し、各 tkm に `tkmOptimizer.exe <in> <out>` をかける
 - `3dsmaxbatch.exe tools\3dsMax\ExportTkl.ms -mxsString file:Stage1.max -mxsString level:Stage1` → `Game\Assets\level3D\Stage1.tkl`
+- `MakeStage1.ms` の主な定数: `g_playerStart`（開始位置）、`g_diveTunnels`（潜ったときだけ通れる抜け道）、`lightData`（`Light_Daylight`／`Light_Lamp` の Point → ゲームでポイントライト）、`EntranceBarrier`（透明な壁）。座標は Max の生の値 × `G_SCALE` = ワールド、ゲームでは (x, z, -y)
+- 床と外の砂漠のどちらかを変えたら、継ぎ目がそろうように両方を書き出す
 - テクスチャは `texconv.exe -vflip -f BC7_UNORM -srgb -y -o Game\Assets\modelData <画像>` で DDS にする（k2 のツールは `C:\my\02_Git\01_k2Engine\GameTemplate\tools\3dsMaxScripts\`）
 - 書き出し後にできる `MaxData\export_report.txt` と `*_backup.max` は消す
 - プレイヤーの銃: `Downloads\m4a4.fbx` を `tools\3dsMax\MakeM4.ms` で `M4.max` にして `names:M4A4 flat:true` で書き出す（原点はスコープの接眼部、テクスチャは `MaxData\textures\m4\`）
@@ -66,6 +71,7 @@
   - `ExportTkm.ms -mxsString file:Swat.max -mxsString names:SwatSoldier -mxsString flat:true`（頂点の多いモデルは flat:true にする。false だと読み込み時の法線スムージングで Debug がほぼ止まる）
   - `ExportTka.ms -mxsString file:Swat.max -mxsString root:SWAT -mxsString clips:Swat_Idle:0:59,Swat_Walk:100:131,Swat_Shoot:200:209,Swat_Death:300:347,Swat_Look:400:489,Swat_Aim:500:529` → `Game\Assets\animData\`（構え・撃つは IK で両手を銃に合わせている）
   - ProOptimizer などモディファイアのボタン操作は、バッチでも `select` → `max modify mode` → `modPanel.setCurrentObject` してからなら動く
+- 陣地のランタン: `MakePropTextures.ps1`（金属・ガラス・ロープのテクスチャ）→ `MakeLantern.ms` で `Lantern.max` → `names:Prop_Lantern,Prop_LanternGlass,Prop_LanternRope` で書き出す。原点はガラスの中心（ロープは下端、長さ100）。ゲームでは `Light_Lamp` の位置に置き、天井までロープを伸ばす（`Stage::AddLantern`）。ガラスは `Emissive.fx` で光らせる
 - UI の画像は `tools\MakeUISprites.ps1` で作る（`Game\Assets\sprite\UI_*.DDS`）
 
 ## エンジン利用時の注意
@@ -74,6 +80,13 @@
   - 変更済み: `geometry/BSP.cpp` の `WalkTree` の空ループと、ノードへの `leafArray` のコピーを削除（Debug での tkm 法線スムージングが頂点数の2乗で遅くなっていたため。結果は同じ）
 - 当たり判定のワイヤーフレームは Debug ビルドでのみ表示される
 - CharacterController の座標は足元（カプセルの下端）
+- `ModelRender` の視錐台カリングは AABB の8頂点を `|w|` で割って判定するので、カメラのすぐ横に広がる大きなモデル（砂漠など）は映っていても消える。その場合は `IRenderer` を継承して `Model` を持ち、毎フレーム `g_renderingEngine->AddRenderObject` する
+- ポイントライトは `PointLight`（`Init` → 色・範囲・累乗を設定）。カメラ空間の座標を使うので毎フレーム `Update()` を呼ぶ
+- 外の日差しはゲーム側の `Game\Assets\shader\DeferredLighting.fx`（Shift-JIS・BOMなし）で入口から外だけに付ける。ディレクションライト0が太陽（影あり）、ディレクションライト3は光ではなくパラメータ置き場（direction = 入口の x・ぼかす長さ・有効フラグ、color = 外の環境光）。設定は `Stage::InitLighting`。トーンマップとブルームはエンジン側でオフ
+- エンジンのディファード以外（`model.fx` の半透明・フォワード）はこの切り替えを知らないので、使うときは注意
+- 潜行中のカプセルは、エンジンの CharacterController が「下向きにゆるく傾いた天井」を壁と見なさずにすり抜けるので、`Player::IsDiveHeadBlocked` で体の中心の上（高さ60まで、半径10の球）をスイープして止め、当たったら X か Z だけの移動に切り替える（`LimitDiveMove`）。抜け道（`MakeStage1.ms` の `G_TUNNEL_HALF_WIDTH` 95・`G_TUNNEL_HEIGHT` 135）は横をまっすぐ立てた箱形にして、ゆるい天井の斜面を作らない。壁モデルの厚み（Shell 40）の分だけ天井は低くなり、床からの隙間は約101（潜行中のカプセル80は通れ、浮上中の170は通れない）。広げすぎると洞窟の壁ごと削れて抜け道に見えなくなる
+- 保険として、真上に天井が無い位置（＝マップの外）に出たら直前の位置に戻す（`Player::HasCeilingAbove`・`m_safePosition`）
+- フォント（太字）には ▶ ！（）が無い。使う前にグリフがあるか確かめる
 - `FontRender::SetText()` は渡した文字列を書式として `swprintf_s` し直す。`%` を表示したいときは `%%` にして渡す（そのままだと実行時エラー）
 
 ## 作業ログ
@@ -130,6 +143,19 @@
 - 木箱・樽・ドラム缶を18個に減らし、携行缶は車の近くだけに。小物は全部で40個
 - 敵の撃破エフェクト（砂粒が飛び散る）は作ったが、不要とのことで削除
 - 内容ごとに5回に分けてコミットし Push。古い履歴の `backup-before-rewrite` ブランチを削除
-- 次回: 11/10〜11/11 の「クリア／ゲームオーバー／リトライの画面切り替え」「ゲーム全体の流れ（現在のステージ・リトライ地点）の管理」（11/12 は予備日）
-- 未決定: Notion のステータス（砂の盛り上がり・ステージ1の配置・障害物モデル・全滅で進める・クリアタイムは笠井のOK待ち）、「敵の撃破エフェクトの制作」タスクの扱い、「潜れない場所の判定」（保留中）、スコープ倍率の仕様（上の節は1.5倍、コードは1.25倍）、「α版の通しプレイ確認」が予備日の 11/15 にかかっている件
+- （ここから下は同じ日の後半。まだコミットしていない）
+- 画面の流れ: `GameFlow`（現在のステージ・リトライ地点・カギ・合計タイム・リトライ回数。`FindGO` か `NewGO` で常駐）、仮の `Title`（A でスタート）、`GameOver` をメニュー化（リトライ／タイトルへ、十字キーとスティック）、`StageClear` → `GameClear` に改名（合計タイム・リトライ回数を表示し、A でタイトルへ）。`Fade::Get()` を追加。`main.cpp`（Shift-JIS）は `Title` から始まる
+- 開始直後に撃たれる件: 開始位置を洞窟の入口側の通路 `g_playerStart = [-3950,-1250]` に移し、最初の見張り（`Game.cpp` の SOLDIERS[0]）は入口の通路の出口を向いて立つ。潜ったときだけ通れる低い抜け道 `g_diveTunnels` を4本追加（地図は `MaxData\stage_report.txt` に出る。このファイルはコミットしない）
+- 潜行中のプレイヤーは低いカプセル（`m_diveCharaCon`、高さ合計80）に切り替える。天井が低くて浮上できないときは「天井が低くて浮上できない」と出す（`Player::HasHeadroom`・`SetDiveBody`）
+- 開始位置の裏を洞窟の入口に: 入口の外は砂漠（`Desert_Stage1`）と昼の空（`skyCubeMapWild`、カメラに追従、`Stage::InitSky`）。入口には透明な壁（tkl の Point `EntranceBarrier`、`Stage::InitBarrier`）。遠くの岩山は不要とのことで削除
+- ライティング: 洞窟らしく暗くした（太陽を0、環境光 0.16）。tkl の Point `Light_Daylight`（入口の光）と `Light_Lamp`（13個、陣地の上）からポイントライトを作る（`Stage::AddPointLight`）。ランプのモデルはまだ無い
+- 床と砂漠の UV はワールド座標の真上からの投影にして継ぎ目をそろえた（`finishGroundMesh`、300 で1枚）
+- 笠井の確認: ゲームループ（仮）・入口と透明な壁・洞窟のライティングは OK。床と砂漠の境目の線はまだ見えた。抜け道で潜行中にマップの外に出た
+- 境目の対策: 砂漠の専用シェーダー（OutdoorLit.fx）をやめ、砂漠も普通のディファードで描く（`m_outdoorModel` を毎フレーム `AddRenderObject`）。日差しは `DeferredLighting.fx` で入口から外だけに足すので、床と砂漠が同じ光の計算になる。太陽は洞窟の奥側の上から当て、入口の外に岩の影が落ちるようにした
+- 抜け道の不具合: 天井の低いゆるい斜面をエンジンの当たり判定が壁と見なさず、すり抜けていた。頭の判定（`Player::IsDiveHeadBlocked`）だけでは直らなかったので、抜け道の横を垂直に作り直してステージを書き出し直した（ゆるい斜面は415枚→2枚、残りは洞窟の中の岩の柱）。一度広げすぎて壁ごと削れたので、幅95・高さ135に戻した。真上に天井が無い位置に出たら戻す保険も入れた
+- 陣地のランタンを追加（`MakeLantern.ms`、`Stage::AddLantern`、`Emissive.fx`）。13個のランプの位置に天井からロープで吊るす
+- 次回:
+  - 笠井のプレイ確認待ち: 床と砂漠の境目（線が消えたか・外の明るさと影）、抜け道で外に出ないか（壁沿いで引っかかりすぎないか）、ランタンの見た目と大きさ、「天井が低くて浮上できない」の表示
+  - OK が出たら日本語でコミット（`08_*_進捗報告*.pptx` と `MaxData\stage_report.txt` は入れない）し、Notion の「クリア／ゲームオーバー／リトライの画面切り替えの実装」(3ffdbc3807ce8150ac7ada775679c785) と「ゲーム全体の流れ（現在のステージ・リトライ地点）の管理の実装」(400dbc3807ce81728280c4d465ca0f11) を完了にする
+- 未決定: Notion のステータス（砂の盛り上がり・ステージ1の配置・障害物モデル・全滅で進める・クリアタイムは笠井のOK待ち）、「敵の撃破エフェクトの制作」タスクの扱い、「潜れない場所の判定」（保留中）、スコープ倍率の仕様（上の節は1.5倍、コードは1.25倍）、「α版の通しプレイ確認」が予備日の 11/15 にかかっている件、ランタンを自作の仮モデルのままにするか素材に差し替えるか
 - 保留: CREDITS.md に今回の4素材（木箱と樽・ドラム缶と携行缶・UAZ・砂袋）の配布ページを追記（リンク待ち）、企画書のファイル名と中身にフルネーム・学校名が入っている件（笠井の判断待ち）
