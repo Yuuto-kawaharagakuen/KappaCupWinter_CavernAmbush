@@ -16,7 +16,7 @@ namespace
 		"Assets/animData/Swat_Look.tka",
 		"Assets/animData/Swat_Aim.tka",
 	};
-	const float DEATH_ANIMATION_TIME = 36.0f / 30.0f;
+	const float DEATH_ANIMATION_TIME = 48.0f / 30.0f;
 	const float DEATH_BLEND_TIME = 0.1f;
 	const float STUCK_MOVE_RATE = 0.25f;
 	const float STUCK_TIME = 0.5f;
@@ -29,7 +29,7 @@ namespace
 	const float ANIMATION_BLEND_TIME = 0.2f;
 	const float SHOOT_BLEND_TIME = 0.05f;
 	const float WALK_ANIMATION_THRESHOLD = 10.0f;
-	const int MAX_HP = 30;
+	const int MAX_HP = 50;
 	const float CAPSULE_RADIUS = 30.0f;
 	const float CAPSULE_HEIGHT = 120.0f;
 
@@ -72,6 +72,22 @@ namespace
 	const float MUZZLE_FORWARD = 62.0f;
 	const float MUZZLE_RIGHT = -6.0f;
 
+	const float ATTACK_MOVE_SPEED = 220.0f;
+	const float ATTACK_MOVE_TIMEOUT = 2.0f;
+	const float ATTACK_HOLD_TIME_MIN = 1.4f;
+	const float ATTACK_HOLD_TIME_RANGE = 1.2f;
+	const float ATTACK_FIRST_HOLD_TIME = 1.0f;
+	const float ATTACK_RETRY_TIME = 0.5f;
+	const float ATTACK_REAIM_DELAY = 0.35f;
+	const float ATTACK_STRAFE_MIN = 150.0f;
+	const float ATTACK_STRAFE_RANGE = 150.0f;
+	const float ATTACK_PREFERRED_DISTANCE = 700.0f;
+	const float ATTACK_RADIAL_LIMIT = 200.0f;
+	const float ATTACK_FLOOR_RAY_UP = 150.0f;
+	const float ATTACK_FLOOR_RAY_DOWN = 300.0f;
+	const float ATTACK_FLOOR_HEIGHT_LIMIT = 60.0f;
+	const float ATTACK_PATH_HEIGHT = 60.0f;
+
 	const float MARK_HEIGHT = 215.0f;
 	const float MARK_SCALE = 1.3f;
 	const float MARK_POP_TIME = 0.25f;
@@ -90,6 +106,11 @@ namespace
 	float RandomRange(float range)
 	{
 		return (static_cast<float>(rand()) / RAND_MAX * 2.0f - 1.0f) * range;
+	}
+
+	float Random01()
+	{
+		return static_cast<float>(rand()) / RAND_MAX;
 	}
 }
 
@@ -220,6 +241,11 @@ void Soldier::UpdateAvoid(float deltaTime)
 
 void Soldier::GiveUpMove()
 {
+	if (m_state == enState_Attack && m_isAttackMoving) {
+		m_isAttackMoving = false;
+		m_attackTimer = ATTACK_RETRY_TIME;
+		return;
+	}
 	if (m_state == enState_Alert) {
 		m_lastKnownPosition = m_position;
 		return;
@@ -312,25 +338,103 @@ void Soldier::UpdateAttack(float deltaTime)
 		return;
 	}
 
-	if (CanSeePlayer() || CanSensePlayer()) {
+	bool isTracking = CanSeePlayer() || CanSensePlayer();
+	if (isTracking) {
 		m_lastKnownPosition = m_player->GetPosition();
 		m_lostTimer = 0.0f;
-		TurnTo(m_lastKnownPosition, deltaTime);
+	}
+	else {
+		m_lostTimer += deltaTime;
+		if (m_lostTimer >= LOST_TIME) {
+			ChangeState(enState_Alert);
+			return;
+		}
+	}
 
+	m_attackTimer -= deltaTime;
+	if (m_isAttackMoving) {
+		bool isArrived = MoveTo(m_attackMoveTarget, ATTACK_MOVE_SPEED);
+		if (!isArrived) {
+			TurnTo(m_attackMoveTarget, deltaTime);
+		}
+		if (isArrived || m_attackTimer <= 0.0f) {
+			m_isAttackMoving = false;
+			m_attackTimer = ATTACK_HOLD_TIME_MIN + Random01() * ATTACK_HOLD_TIME_RANGE;
+			if (m_shotTimer < ATTACK_REAIM_DELAY) {
+				m_shotTimer = ATTACK_REAIM_DELAY;
+			}
+		}
+		return;
+	}
+
+	TurnTo(m_lastKnownPosition, deltaTime);
+	if (isTracking) {
 		m_shotTimer -= deltaTime;
 		float targetYaw = MathUtil::YawFromDirection(m_lastKnownPosition - m_position);
 		if (m_shotTimer <= 0.0f && fabsf(AngleDiff(m_yaw, targetYaw)) <= SHOT_FACING_ANGLE) {
 			Shoot();
 			m_shotTimer = SHOT_INTERVAL;
 		}
-		return;
 	}
+	if (m_attackTimer <= 0.0f && !m_isShooting) {
+		if (ChooseAttackMove()) {
+			m_isAttackMoving = true;
+			m_attackTimer = ATTACK_MOVE_TIMEOUT;
+		}
+		else {
+			m_attackTimer = ATTACK_RETRY_TIME;
+		}
+	}
+}
 
-	m_lostTimer += deltaTime;
-	TurnTo(m_lastKnownPosition, deltaTime);
-	if (m_lostTimer >= LOST_TIME) {
-		ChangeState(enState_Alert);
+bool Soldier::ChooseAttackMove()
+{
+	Vector3 toPlayer = m_lastKnownPosition - m_position;
+	toPlayer.y = 0.0f;
+	float distance = toPlayer.Length();
+	if (distance < 1.0f) {
+		return false;
 	}
+	toPlayer.Normalize();
+	Vector3 side = { toPlayer.z, 0.0f, -toPlayer.x };
+	float radial = MathUtil::Clamp(distance - ATTACK_PREFERRED_DISTANCE, -ATTACK_RADIAL_LIMIT, ATTACK_RADIAL_LIMIT);
+	float strafe = ATTACK_STRAFE_MIN + Random01() * ATTACK_STRAFE_RANGE;
+	for (int i = 0; i < 2; i++) {
+		float sign = i == 0 ? m_strafeSide : -m_strafeSide;
+		Vector3 candidate = m_position + side * (strafe * sign) + toPlayer * radial;
+		Vector3 floorPosition;
+		if (IsReachable(candidate, floorPosition)) {
+			m_attackMoveTarget = floorPosition;
+			m_strafeSide = -sign;
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Soldier::IsReachable(const Vector3& target, Vector3& floorPosition) const
+{
+	Vector3 rayTop = target;
+	rayTop.y = m_position.y + ATTACK_FLOOR_RAY_UP;
+	Vector3 rayBottom = target;
+	rayBottom.y = m_position.y - ATTACK_FLOOR_RAY_DOWN;
+	if (!PhysicsWorld::GetInstance()->RayTest(rayTop, rayBottom, floorPosition)) {
+		return false;
+	}
+	if (fabsf(floorPosition.y - m_position.y) > ATTACK_FLOOR_HEIGHT_LIMIT) {
+		return false;
+	}
+	Vector3 pathStart = m_position;
+	pathStart.y += ATTACK_PATH_HEIGHT;
+	Vector3 pathEnd = floorPosition;
+	pathEnd.y += ATTACK_PATH_HEIGHT;
+	Vector3 toEnd = pathEnd - pathStart;
+	float length = toEnd.Length();
+	if (length < 1.0f) {
+		return true;
+	}
+	toEnd.Normalize();
+	return !IsSightBlocked(pathStart, pathEnd + toEnd * CAPSULE_RADIUS);
 }
 
 void Soldier::ChangeState(EnState state)
@@ -348,6 +452,8 @@ void Soldier::ChangeState(EnState state)
 	m_waitTimer = 0.0f;
 	if (state == enState_Attack) {
 		m_shotTimer = FIRST_SHOT_DELAY;
+		m_isAttackMoving = false;
+		m_attackTimer = ATTACK_FIRST_HOLD_TIME;
 	}
 	if (state != enState_Patrol) {
 		m_markTimer = MARK_POP_TIME;
@@ -368,7 +474,7 @@ Vector3 Soldier::GetPlayerAimPosition() const
 	return aim;
 }
 
-bool Soldier::CanSeePlayer() const
+bool Soldier::CanSeePlayer()
 {
 	if (m_player == nullptr || m_player->IsDead() || m_player->IsDiving()) {
 		return false;

@@ -86,12 +86,15 @@ private:
 	void UpdateReload();
 	void Shoot();
 	void Rotate();
+	void UpdateAxes();
 	void Move();
 	void UpdateCamera();
+	Vector3 ResolveCameraCollision(const Vector3& target, const Vector3& desired) const;
 	void UpdateGun();
 	void UpdateMound();
 
 	CharacterController m_charaCon;
+	SphereCollider m_cameraCollider;
 	ModelRender m_gunModel;
 	ModelRender m_moundModel;
 	EnState m_state = enState_Surface;

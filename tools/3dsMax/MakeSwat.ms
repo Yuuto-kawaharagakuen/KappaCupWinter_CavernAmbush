@@ -198,11 +198,50 @@
 	)
 	global g_armChains = armChains
 
+	fn keyInterp keys t =
+	(
+		if t <= keys[1][1] then return keys[1][2]
+		for i = 1 to keys.count - 1 do
+		(
+			local k0 = keys[i]
+			local k1 = keys[i + 1]
+			if t <= k1[1] then
+			(
+				local u = (t - k0[1]) / (k1[1] - k0[1] as float)
+				u = u * u * (3.0 - 2.0 * u)
+				return k0[2] + (k1[2] - k0[2]) * u
+			)
+		)
+		keys[keys.count][2]
+	)
+	global g_keyInterp = keyInterp
+
+	global g_deathKeys = #(
+		#("mixamorig:Hips", #pz, #(#(0, 0), #(4, 1), #(12, -6), #(24, -50), #(40, -72), #(44, -68), #(48, -72))),
+		#("mixamorig:Hips", #py, #(#(0, 0), #(4, 6), #(12, 22), #(24, 28), #(40, 45))),
+		#("mixamorig:Hips", #rx, #(#(0, 0), #(24, -8), #(40, -72), #(44, -70), #(48, -75))),
+		#("mixamorig:Hips", #rz, #(#(0, 0), #(24, 6), #(40, 14))),
+		#("mixamorig:Spine", #rx, #(#(0, 0), #(3, -8), #(14, -4), #(24, 6), #(40, -6))),
+		#("mixamorig:Spine1", #rx, #(#(0, 0), #(3, -22), #(12, -12), #(24, 8), #(40, -8), #(48, -6))),
+		#("mixamorig:Neck", #rx, #(#(0, 0), #(3, -18), #(12, -8), #(24, 12), #(40, -10), #(44, 4), #(48, 0))),
+		#("mixamorig:Head", #rx, #(#(0, 0), #(3, -10), #(24, 6), #(40, -6))),
+		#("mixamorig:LeftUpLeg", #rx, #(#(0, 0), #(4, 0), #(12, 18), #(24, -55), #(40, -20))),
+		#("mixamorig:LeftLeg", #rx, #(#(0, 0), #(12, 25), #(24, 105), #(40, 70))),
+		#("mixamorig:RightUpLeg", #rx, #(#(0, 0), #(12, -5), #(24, -50), #(40, -15))),
+		#("mixamorig:RightLeg", #rx, #(#(0, 0), #(12, 10), #(24, 100), #(40, 60))),
+		#("mixamorig:LeftFoot", #rx, #(#(0, 0), #(24, -20), #(40, 10))),
+		#("mixamorig:RightFoot", #rx, #(#(0, 0), #(24, -20), #(40, 10))),
+		#("mixamorig:LeftShoulder", #rx, #(#(0, 0), #(4, -10), #(24, 10), #(40, 25))),
+		#("mixamorig:LeftShoulder", #rz, #(#(0, 0), #(40, -15))),
+		#("mixamorig:RightShoulder", #rx, #(#(0, 0), #(4, -8), #(40, 15)))
+	)
+
 	fn boneOffset name clip t =
 	(
 		local rx = 0.0
 		local rz = 0.0
 		local pz = 0.0
+		local py = 0.0
 		if clip == #idle then
 		(
 			local ph = 360.0 * t / 60.0
@@ -252,20 +291,17 @@
 		)
 		else if clip == #death then
 		(
-			local b = amin 1.0 (t / 10.0)
-			local buckle = b * b * (3.0 - 2.0 * b)
-			local fl = amax 0.0 (amin 1.0 ((t - 6.0) / 22.0))
-			local fall = fl * fl
-			case name of
+			local keys = ::g_deathKeys
+			for k in keys where k[1] == name do
 			(
-				"SWAT": rx = -86.0 * fall
-				"mixamorig:Hips": pz = -20.0 * buckle
-				"mixamorig:LeftUpLeg": rx = -25.0 * buckle
-				"mixamorig:RightUpLeg": rx = -20.0 * buckle
-				"mixamorig:LeftLeg": rx = 45.0 * buckle
-				"mixamorig:RightLeg": rx = 38.0 * buckle
-				"mixamorig:Spine1": rx = -10.0 * fall
-				"mixamorig:Neck": rx = -15.0 * fall
+				local v = keyInterp k[3] t
+				case k[2] of
+				(
+					#rx: rx = v
+					#rz: rz = v
+					#pz: pz = v
+					#py: py = v
+				)
 			)
 		)
 		else if clip == #look then
@@ -279,11 +315,11 @@
 				"mixamorig:Head": rz = 18.0 * sin (ph + 20.0)
 			)
 		)
-		#(rx, rz, pz)
+		#(rx, rz, pz, py)
 	)
 	global g_boneOffset = boneOffset
 
-	local clips = #(#(#idle, 0, 59), #(#walk, 100, 131), #(#shoot, 200, 209), #(#death, 300, 335), #(#look, 400, 489), #(#aim, 500, 529))
+	local clips = #(#(#idle, 0, 59), #(#walk, 100, 131), #(#shoot, 200, 209), #(#death, 300, 347), #(#look, 400, 489), #(#aim, 500, 529))
 	animationRange = interval 0 540
 	with animate on
 	(
@@ -319,7 +355,7 @@
 						local p = m.translationPart
 						m = m * (transMatrix (-p)) * (rotateXMatrix ofs[1]) * (rotateZMatrix ofs[2]) * (transMatrix p)
 					)
-					if ofs[3] != 0.0 then m.translation = m.translation + [0, 0, ofs[3]]
+					if ofs[3] != 0.0 or ofs[4] != 0.0 then m.translation = m.translation + [0, ofs[4], ofs[3]]
 					if isAim then
 					(
 						for ch in armChains where ch[1][1] == i do

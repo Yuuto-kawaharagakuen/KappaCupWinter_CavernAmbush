@@ -55,8 +55,10 @@ private:
 	void UpdatePatrol(float deltaTime);
 	void UpdateAlert(float deltaTime);
 	void UpdateAttack(float deltaTime);
+	bool ChooseAttackMove();
+	bool IsReachable(const Vector3& target, Vector3& floorPosition) const;
 	void ChangeState(EnState state);
-	bool CanSeePlayer() const;
+	bool CanSeePlayer() ;
 	bool CanSensePlayer() const;
 	bool IsSightBlocked(const Vector3& start, const Vector3& end) const;
 	bool MoveTo(const Vector3& target, float speed);
@@ -92,6 +94,10 @@ private:
 	float m_lookPhase = 0.0f;
 	float m_shotTimer = 0.0f;
 	float m_reactionTimer = 0.0f;
+	bool m_isAttackMoving = false;
+	float m_attackTimer = 0.0f;
+	Vector3 m_attackMoveTarget = Vector3::Zero;
+	float m_strafeSide = 1.0f;
 
 	FontRender m_mark;
 	float m_markTimer = 0.0f;

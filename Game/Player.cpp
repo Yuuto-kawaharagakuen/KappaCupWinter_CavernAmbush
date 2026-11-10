@@ -7,6 +7,7 @@
 
 namespace
 {
+	const float START_YAW = 90.0f;
 	const float CAPSULE_RADIUS = 30.0f;
 	const float CAPSULE_HEIGHT = 110.0f;
 	const float EYE_HEIGHT = 160.0f;
@@ -32,7 +33,7 @@ namespace
 	const float GUN_AIM_YAW = 2.0f;
 	const Vector3 ADS_OFFSET = { 0.0f, 0.0f, 9.0f };
 	const float ADS_TIME = 0.18f;
-	const float ADS_ZOOM = 3.5f;
+	const float ADS_ZOOM = 1.25f;
 	const float ADS_TURN_RATE = 0.4f;
 	const float ADS_MOVE_RATE = 0.5f;
 	const float ADS_KICK_RATE = 0.3f;
@@ -68,6 +69,28 @@ namespace
 	const float MOUND_MOVE_BLEND = 6.0f;
 	const float MOUND_SINK = 25.0f;
 	const float MOUND_SCALE = 1.4f;
+	const float CAMERA_COLLISION_RADIUS = 15.0f;
+	const float CAMERA_COLLISION_BUFFER = 10.0f;
+	const float CAMERA_MIN_DISTANCE = 20.0f;
+
+	struct CameraSweepResult : public btCollisionWorld::ConvexResultCallback
+	{
+		bool isHit = false;
+		float hitFraction = 1.0f;
+		btScalar addSingleResult(btCollisionWorld::LocalConvexResult& convexResult, bool normalInWorldSpace) override
+		{
+			const btCollisionObject* object = convexResult.m_hitCollisionObject;
+			if (object->getUserIndex() == enCollisionAttr_Character
+				|| object->getInternalType() == btCollisionObject::CO_GHOST_OBJECT) {
+				return 1.0f;
+			}
+			if (convexResult.m_hitFraction < hitFraction) {
+				hitFraction = convexResult.m_hitFraction;
+				isHit = true;
+			}
+			return convexResult.m_hitFraction;
+		}
+	};
 }
 
 Player::Player()
@@ -86,6 +109,9 @@ bool Player::Start()
 	m_charaCon.Init(CAPSULE_RADIUS, CAPSULE_HEIGHT, m_position);
 	m_ammo = MAX_AMMO;
 	m_hp = MAX_HP;
+	m_yaw = START_YAW;
+	m_lastYaw = START_YAW;
+	UpdateAxes();
 	g_camera3D->SetNear(0.5f);
 	g_camera3D->SetFar(20000.0f);
 	m_baseViewAngle = g_camera3D->GetViewAngle();
@@ -93,6 +119,7 @@ bool Player::Start()
 	m_gunModel.Init(GUN_MODEL_PATH);
 	m_gunModel.SetShadowCasterFlag(false);
 	m_moundModel.Init(MOUND_MODEL_PATH);
+	m_cameraCollider.Create(CAMERA_COLLISION_RADIUS);
 	m_gunModel.SetScale({ GUN_SCALE, GUN_SCALE, GUN_SCALE });
 	UpdateCamera();
 	UpdateGun();
@@ -295,6 +322,11 @@ void Player::Rotate()
 		m_pitch = -PITCH_LIMIT;
 	}
 
+	UpdateAxes();
+}
+
+void Player::UpdateAxes()
+{
 	float yawRad = Math::DegToRad(m_yaw);
 	m_forward.Set(sinf(yawRad), 0.0f, cosf(yawRad));
 	m_right.Set(cosf(yawRad), 0.0f, -sinf(yawRad));
@@ -354,6 +386,7 @@ void Player::UpdateCamera()
 	Vector3 tpsTarget = m_position;
 	tpsTarget.y += TPS_TARGET_HEIGHT;
 	Vector3 tpsPos = tpsTarget - m_forward * TPS_DISTANCE + Vector3::Up * TPS_HEIGHT;
+	tpsPos = ResolveCameraCollision(tpsTarget, tpsPos);
 
 	float t = MathUtil::SmoothStep(m_cameraBlend);
 	Vector3 cameraPos;
@@ -370,6 +403,34 @@ void Player::UpdateCamera()
 	if (IsDiving()) {
 		g_k2Engine->DrawVector(m_forward * 100.0f, m_position, "player");
 	}
+}
+
+Vector3 Player::ResolveCameraCollision(const Vector3& target, const Vector3& desired) const
+{
+	Vector3 toCamera = desired - target;
+	float distance = toCamera.Length();
+	if (distance < 0.01f) {
+		return desired;
+	}
+
+	btTransform start;
+	start.setIdentity();
+	start.setOrigin(btVector3(target.x, target.y, target.z));
+	btTransform end;
+	end.setIdentity();
+	end.setOrigin(btVector3(desired.x, desired.y, desired.z));
+	CameraSweepResult result;
+	PhysicsWorld::GetInstance()->ConvexSweepTest(static_cast<const btConvexShape*>(m_cameraCollider.GetBody()), start, end, result);
+	if (!result.isHit) {
+		return desired;
+	}
+
+	toCamera.Normalize();
+	float safeDistance = distance * result.hitFraction - CAMERA_COLLISION_BUFFER;
+	if (safeDistance < CAMERA_MIN_DISTANCE) {
+		safeDistance = CAMERA_MIN_DISTANCE;
+	}
+	return target + toCamera * safeDistance;
 }
 
 void Player::UpdateGun()
