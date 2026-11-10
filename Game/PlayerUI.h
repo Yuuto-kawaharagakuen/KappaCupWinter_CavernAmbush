@@ -16,6 +16,7 @@ public:
 		m_player = player;
 	}
 	void NotifyHit(const Vector3& worldPosition, int damage, bool isKill);
+	void ShowMessage(const wchar_t* text, float duration);
 
 private:
 	static const int AMMO_PIP_NUM = 10;
@@ -47,8 +48,12 @@ private:
 	void UpdateDamagePopups(float deltaTime);
 	void UpdateVignette(float deltaTime);
 	void UpdateScope();
+	void UpdateMessage(float deltaTime);
 
 	Player* m_player = nullptr;
+
+	FontRender m_messageText;
+	float m_messageTimer = 0.0f;
 
 	SpriteRender m_vignette;
 	SpriteRender m_scope;

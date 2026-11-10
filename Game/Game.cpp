@@ -4,6 +4,7 @@
 #include "Stage.h"
 #include "PlayerUI.h"
 #include "GameOver.h"
+#include "StageClear.h"
 #include "Fade.h"
 #include "Soldier.h"
 #include "EnemyBullet.h"
@@ -12,9 +13,12 @@
 namespace
 {
 	const float GAME_OVER_DELAY = 1.0f;
-	const float FLOOR_RAY_TOP = 400.0f;
+	const float FLOOR_RAY_TOP = 280.0f;
 	const float FLOOR_RAY_BOTTOM = -600.0f;
 	const float SPAWN_HEIGHT_OFFSET = 5.0f;
+	const float HOLE_ENTER_RADIUS = 130.0f;
+	const float HOLE_OPEN_MESSAGE_TIME = 5.0f;
+	const float HOLE_LOCKED_MESSAGE_TIME = 0.5f;
 	struct SoldierData
 	{
 		float x;
@@ -24,15 +28,12 @@ namespace
 		float yaw;
 	};
 	const SoldierData SOLDIERS[] = {
-		{ -3366.0f, 0.0f, -3443.0f, 689.0f, 90.0f },
-		{ -2601.0f, 0.0f, -2984.0f, -230.0f, -90.0f },
-		{ -1224.0f, -765.0f, -612.0f, -1148.0f, 0.0f },
-		{ -459.0f, 459.0f, 459.0f, 306.0f, 90.0f },
-		{ 612.0f, -995.0f, 612.0f, -995.0f, -90.0f },
-		{ 1148.0f, -153.0f, 383.0f, -536.0f, -90.0f },
-		{ 1913.0f, 230.0f, 2525.0f, -77.0f, -90.0f },
-		{ 3519.0f, -689.0f, 4208.0f, -765.0f, -90.0f },
-		{ 4208.0f, 230.0f, 4208.0f, 230.0f, -90.0f },
+		{ -2356.0f, 0.0f, -2410.0f, 482.0f, 90.0f },
+		{ -857.0f, -536.0f, -428.0f, -804.0f, 0.0f },
+		{ -321.0f, 321.0f, 321.0f, 214.0f, 90.0f },
+		{ 1339.0f, 161.0f, 1768.0f, -54.0f, -90.0f },
+		{ 2463.0f, -482.0f, 2946.0f, -536.0f, -90.0f },
+		{ 2946.0f, 161.0f, 2946.0f, 161.0f, -90.0f },
 	};
 
 	Vector3 FindFloorPosition(float x, float z, float fallbackY)
@@ -49,7 +50,7 @@ namespace
 
 Game::Game()
 {
-	//PhysicsWorld::GetInstance()->EnableDrawDebugWireFrame();
+	
 
 }
 
@@ -100,10 +101,68 @@ bool Game::Start()
 
 void Game::Update()
 {
-	if (!m_player->IsDead()) {
+	if (m_isStageClear) {
+		UpdateStageClear();
+		return;
+	}
+	if (m_player->IsDead()) {
+		UpdateGameOver();
 		return;
 	}
 
+	m_clearTime += g_gameTime->GetFrameDeltaTime();
+	UpdateHole();
+}
+
+int Game::CountAliveEnemies() const
+{
+	int count = 0;
+	QueryGOs<EnemyBase>(ObjectName::ENEMY, [&](EnemyBase* enemy) {
+		if (!enemy->IsDead()) {
+			count++;
+		}
+		return true;
+	});
+	return count;
+}
+
+void Game::UpdateHole()
+{
+	int aliveCount = CountAliveEnemies();
+	if (aliveCount == 0 && !m_isHoleOpen) {
+		m_isHoleOpen = true;
+		m_playerUI->ShowMessage(L"敵を全滅させた 門の横の穴に潜れ", HOLE_OPEN_MESSAGE_TIME);
+	}
+
+	Vector3 toHole = m_stage->GetHolePosition() - m_player->GetPosition();
+	toHole.y = 0.0f;
+	if (toHole.Length() > HOLE_ENTER_RADIUS || !m_player->IsDiving() || m_player->IsSwitching()) {
+		return;
+	}
+
+	if (!m_isHoleOpen) {
+		wchar_t text[32];
+		swprintf_s(text, L"まだ敵が残っている あと %d 体", aliveCount);
+		m_playerUI->ShowMessage(text, HOLE_LOCKED_MESSAGE_TIME);
+		return;
+	}
+
+	m_isStageClear = true;
+	m_fade->StartFadeOut();
+}
+
+void Game::UpdateStageClear()
+{
+	if (m_fade->IsBlack()) {
+		StageClear* stageClear = NewGO<StageClear>(0, ObjectName::STAGE_CLEAR);
+		stageClear->SetClearTime(m_clearTime);
+		m_fade->StartFadeIn();
+		DeleteGO(this);
+	}
+}
+
+void Game::UpdateGameOver()
+{
 	if (!m_isGameOver) {
 		m_gameOverTimer += g_gameTime->GetFrameDeltaTime();
 		if (m_gameOverTimer >= GAME_OVER_DELAY) {

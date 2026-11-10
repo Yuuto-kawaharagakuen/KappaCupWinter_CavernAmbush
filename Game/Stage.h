@@ -20,6 +20,7 @@ public:
 
 private:
 	LevelRender m_levelRender;
+	ModelRender m_holeModel;
 	Vector3 m_playerStartPosition = Vector3::Zero;
 	Vector3 m_holePosition = Vector3::Zero;
 };

@@ -227,6 +227,7 @@
     <ClCompile Include="SandBullet.cpp" />
     <ClCompile Include="Fade.cpp" />
     <ClCompile Include="GameOver.cpp" />
+    <ClCompile Include="StageClear.cpp" />
     <ClCompile Include="EnemyBase.cpp" />
     <ClCompile Include="EnemyBullet.cpp" />
     <ClCompile Include="Soldier.cpp" />
@@ -246,6 +247,7 @@
     <ClInclude Include="SandBullet.h" />
     <ClInclude Include="Fade.h" />
     <ClInclude Include="GameOver.h" />
+    <ClInclude Include="StageClear.h" />
     <ClInclude Include="EnemyBase.h" />
     <ClInclude Include="EnemyBullet.h" />
     <ClInclude Include="HitUtil.h" />

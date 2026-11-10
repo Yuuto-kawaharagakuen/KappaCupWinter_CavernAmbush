@@ -110,6 +110,12 @@ namespace
 	const Vector4 POPUP_KILL_COLOR = { 1.0f, 0.4f, 0.25f, 1.0f };
 	const float POPUP_HEIGHT_OFFSET = 30.0f;
 
+	const float MESSAGE_Y = 240.0f;
+	const float MESSAGE_SCALE = 0.85f;
+	const float MESSAGE_CHAR_WIDTH = 42.0f;
+	const float MESSAGE_FADE_TIME = 0.4f;
+	const Vector4 MESSAGE_COLOR = { 1.0f, 0.85f, 0.45f, 1.0f };
+
 	Vector3 MakePosition(float x, float y)
 	{
 		return { x, y, 0.0f };
@@ -178,6 +184,7 @@ bool PlayerUI::Start()
 	for (auto& popup : m_damagePopups) {
 		InitText(popup.font, L"", Vector3::Zero, POPUP_SCALE, POPUP_COLOR, enFontType::Bold);
 	}
+	InitText(m_messageText, L"", MakePosition(0.0f, MESSAGE_Y), MESSAGE_SCALE, MESSAGE_COLOR, enFontType::Bold);
 	return true;
 }
 
@@ -283,6 +290,23 @@ void PlayerUI::NotifyHit(const Vector3& worldPosition, int damage, bool isKill)
 	target->isActive = true;
 }
 
+void PlayerUI::ShowMessage(const wchar_t* text, float duration)
+{
+	float width = static_cast<float>(wcslen(text)) * MESSAGE_CHAR_WIDTH;
+	m_messageText.SetText(text);
+	m_messageText.SetPosition(MakePosition(-width * 0.5f, MESSAGE_Y));
+	m_messageTimer = duration;
+}
+
+void PlayerUI::UpdateMessage(float deltaTime)
+{
+	if (m_messageTimer <= 0.0f) {
+		return;
+	}
+	m_messageTimer -= deltaTime;
+	SetTextAlpha(m_messageText, MESSAGE_COLOR, MathUtil::Clamp01(m_messageTimer / MESSAGE_FADE_TIME));
+}
+
 void PlayerUI::Update()
 {
 	if (m_player == nullptr) {
@@ -298,6 +322,7 @@ void PlayerUI::Update()
 	UpdateReload(deltaTime);
 	UpdateDamagePopups(deltaTime);
 	UpdateScope();
+	UpdateMessage(deltaTime);
 }
 
 void PlayerUI::UpdateVignette(float deltaTime)
@@ -615,5 +640,9 @@ void PlayerUI::Render(RenderContext& rc)
 		if (popup.isVisible) {
 			popup.font.Draw(rc);
 		}
+	}
+
+	if (m_messageTimer > 0.0f) {
+		m_messageText.Draw(rc);
 	}
 }
