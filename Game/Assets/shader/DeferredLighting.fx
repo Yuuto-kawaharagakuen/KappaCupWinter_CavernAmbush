@@ -54,6 +54,22 @@ struct PSInput
 ///////////////////////////////////////
 #include "IBL.h"
 
+static const int OUTDOOR_PARAM_LIGHT_NO = 3;
+
+float CalcOutdoorRate(float3 worldPos)
+{
+    float3 param = light.directionalLight[OUTDOOR_PARAM_LIGHT_NO].direction;
+    float rate = smoothstep(0.0f, 1.0f, saturate((param.x - worldPos.x) / max(param.y, 1.0f)));
+    return param.z < 0.5f ? 1.0f : rate;
+}
+
+float3 CalcAmbientLight(float3 worldPos)
+{
+    float3 param = light.directionalLight[OUTDOOR_PARAM_LIGHT_NO].direction;
+    float rate = param.z < 0.5f ? 0.0f : CalcOutdoorRate(worldPos);
+    return lerp(light.ambientLight, light.directionalLight[OUTDOOR_PARAM_LIGHT_NO].color.xyz, rate);
+}
+
 ///////////////////////////////////////
 // 関数
 ///////////////////////////////////////
@@ -136,7 +152,7 @@ float3 CalcDirectionLight(
     float shadowParam
 ){
     float3 lig = 0;
-    for(int ligNo = 0; ligNo < NUM_DIRECTIONAL_LIGHT; ligNo++)
+    for(int ligNo = 0; ligNo < OUTDOOR_PARAM_LIGHT_NO; ligNo++)
     {
         // 影の落ち具合を計算する。
         float shadow = 0.0f;
@@ -340,7 +356,7 @@ float4 PSMainCore(PSInput In, uniform int isSoftShadow)
         worldPos,
         isSoftShadow,
         shadowParam
-    );
+    ) * CalcOutdoorRate(worldPos);
     
     lig += CalcPointLight(
         normal, 
@@ -382,7 +398,7 @@ float4 PSMainCore(PSInput In, uniform int isSoftShadow)
             );
         }else{
             // 環境光による底上げ
-            lig += light.ambientLight * albedoColor;    
+            lig += CalcAmbientLight(worldPos) * albedoColor;    
         }
     }else if (light.isIBL == 1) {
         // 視線からの反射ベクトルを求める。
@@ -396,7 +412,7 @@ float4 PSMainCore(PSInput In, uniform int isSoftShadow)
     }
     else {
         // 環境光による底上げ
-        lig += light.ambientLight * albedoColor;
+        lig += CalcAmbientLight(worldPos) * albedoColor;
     }
    
     float4 finalColor = 1.0f;
