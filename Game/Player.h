@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "SandSplash.h"
+
 class Player : public IGameObject
 {
 public:
@@ -114,6 +116,7 @@ private:
 	SphereCollider m_cameraCollider;
 	ModelRender m_gunModel;
 	ModelRender m_moundModel;
+	SandSplash m_sandSplash;
 	EnState m_state = enState_Surface;
 	Vector3 m_position = Vector3::Zero;
 	Vector3 m_safePosition = Vector3::Zero;

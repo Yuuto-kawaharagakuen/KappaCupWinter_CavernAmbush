@@ -65,6 +65,7 @@
 - 書き出し後にできる `MaxData\export_report.txt` と `*_backup.max` は消す
 - プレイヤーの銃: `Downloads\m4a4.fbx` を `tools\3dsMax\MakeM4.ms` で `M4.max` にして `names:M4A4 flat:true` で書き出す（原点はスコープの接眼部、テクスチャは `MaxData\textures\m4\`）
 - 潜行中の砂の盛り上がり: `MakeSandMound.ms`
+- 潜る／浮上するときの砂しぶきの粒: `MakeSandGrain.ms` で `SandGrain.max` → `names:SandGrain flat:true` で書き出す（テクスチャは床の砂と同じ）
 - 門の横の穴: `MakePropTextures.ps1` で `T_Hole` を作ってから `MakeHole.ms` で `Hole.max` にして `names:StageHole` で書き出す
 - マップに置く小物（`Prop_*`）: `Downloads` の4つの FBX（砂袋の壁は ProOptimizer で頂点を12%に削減）を `MakeProps.ms` で `Props.max` にして `ExportTkm.ms` で書き出す（原点は底面の中心、テクスチャは `MaxData\textures\props\` から `-w 1024 -h 1024` を足して DDS にする。木箱・木樽は FBX にテクスチャが無いので `tools\MakePropTextures.ps1` で自作し、`MakeProps.ms` より先に実行する）。配置は `MakeStage1.ms` の `propClusters`（Point の名前が tkm の名前になり、当たり判定も付く）
 - 敵（SWAT）: 元データは `Documents\Swat`（CGTrader、Mixamo の骨）。`MakeSwat.ms` で `Swat.max` を作る（銃を右手に合体・頂点を18%に削減・待機/歩き/撃つ/倒れる/見回す/構えのキーを打つ）。テクスチャは `MaxData\textures\swat\` から 1K の DDS にする（敵は数が多いので軽さ優先）
@@ -84,6 +85,8 @@
 - ポイントライトは `PointLight`（`Init` → 色・範囲・累乗を設定）。カメラ空間の座標を使うので毎フレーム `Update()` を呼ぶ
 - 外の日差しはゲーム側の `Game\Assets\shader\DeferredLighting.fx`（Shift-JIS・BOMなし）で入口から外だけに付ける。ディレクションライト0が太陽（影あり）、ディレクションライト3は光ではなくパラメータ置き場（direction = 入口の x・ぼかす長さ・有効フラグ、color = 外の環境光）。設定は `Stage::InitLighting`。トーンマップとブルームはエンジン側でオフ
 - エンジンのディファード以外（`model.fx` の半透明・フォワード）はこの切り替えを知らないので、使うときは注意
+- `ModelRender.cpp` は `Draw(rc, 1)` と書かれているが、LevelRender で同じ名前の小物をインスタンシングでまとめても全部見えている（笠井が確認）。砂しぶきの `SandSplash` は粒ごとに ModelRender を持っている
+- エフェクトは Effekseer のファイルが無いので、今はモデルをコードで動かして作る
 - 潜行中のカプセルは、エンジンの CharacterController が「下向きにゆるく傾いた天井」を壁と見なさずにすり抜けるので、`Player::IsDiveHeadBlocked` で体の中心の上（高さ60まで、半径10の球）をスイープして止め、当たったら X か Z だけの移動に切り替える（`LimitDiveMove`）。抜け道（`MakeStage1.ms` の `G_TUNNEL_HALF_WIDTH` 95・`G_TUNNEL_HEIGHT` 135）は横をまっすぐ立てた箱形にして、ゆるい天井の斜面を作らない。壁モデルの厚み（Shell 40）の分だけ天井は低くなり、床からの隙間は約101（潜行中のカプセル80は通れ、浮上中の170は通れない）。広げすぎると洞窟の壁ごと削れて抜け道に見えなくなる
 - 保険として、真上に天井が無い位置（＝マップの外）に出たら直前の位置に戻す（`Player::HasCeilingAbove`・`m_safePosition`）
 - フォント（太字）には ▶ ！（）が無い。使う前にグリフがあるか確かめる
@@ -154,8 +157,12 @@
 - 境目の対策: 砂漠の専用シェーダー（OutdoorLit.fx）をやめ、砂漠も普通のディファードで描く（`m_outdoorModel` を毎フレーム `AddRenderObject`）。日差しは `DeferredLighting.fx` で入口から外だけに足すので、床と砂漠が同じ光の計算になる。太陽は洞窟の奥側の上から当て、入口の外に岩の影が落ちるようにした
 - 抜け道の不具合: 天井の低いゆるい斜面をエンジンの当たり判定が壁と見なさず、すり抜けていた。頭の判定（`Player::IsDiveHeadBlocked`）だけでは直らなかったので、抜け道の横を垂直に作り直してステージを書き出し直した（ゆるい斜面は415枚→2枚、残りは洞窟の中の岩の柱）。一度広げすぎて壁ごと削れたので、幅95・高さ135に戻した。真上に天井が無い位置に出たら戻す保険も入れた
 - 陣地のランタンを追加（`MakeLantern.ms`、`Stage::AddLantern`、`Emissive.fx`）。13個のランプの位置に天井からロープで吊るす
-- 次回:
-  - 笠井のプレイ確認待ち: 床と砂漠の境目（線が消えたか・外の明るさと影）、抜け道で外に出ないか（壁沿いで引っかかりすぎないか）、ランタンの見た目と大きさ、「天井が低くて浮上できない」の表示
-  - OK が出たら日本語でコミット（`08_*_進捗報告*.pptx` と `MaxData\stage_report.txt` は入れない）し、Notion の「クリア／ゲームオーバー／リトライの画面切り替えの実装」(3ffdbc3807ce8150ac7ada775679c785) と「ゲーム全体の流れ（現在のステージ・リトライ地点）の管理の実装」(400dbc3807ce81728280c4d465ca0f11) を完了にする
+- 笠井の OK が出たので内容ごとにコミットして Push。Notion の画面切り替え・ゲーム全体の流れのタスクを完了にした
+- 砂しぶき（`SandSplash`、Player が持つ）: 潜る瞬間・浮上する瞬間に砂粒（`SandGrain.tkm`）を足元から飛ばす。重力で落ちて床に着き、最後に縮んで消える（`Play`・`Spawn`・`Update`・`Draw`）。Notion のタスクは「進行中」
+
+### 2026-11-11
+- 砂しぶき: 潜るときは OK。浮上のときは「周りの砂がボコボコするくらい」にしたいとのことで、高く吹き上げるのをやめ、周りに小さな砂の山（`SandMound.tkm` を小さくしたもの）を時間差で7つ盛り上げて沈め、そこから砂粒を少し跳ねさせるようにした（`SpawnBump`・`SpawnBumpGrains`・`UpdateBump`）
+- 笠井の OK が出たのでコミットし、Notion の「潜行時の砂しぶきエフェクトの制作」を完了にした。同じ木箱・樽が複数あっても全部見えていることも確認してもらった
+- 次回: 「マズルフラッシュ・被弾エフェクトの制作」（期日 11/13）
 - 未決定: Notion のステータス（砂の盛り上がり・ステージ1の配置・障害物モデル・全滅で進める・クリアタイムは笠井のOK待ち）、「敵の撃破エフェクトの制作」タスクの扱い、「潜れない場所の判定」（保留中）、スコープ倍率の仕様（上の節は1.5倍、コードは1.25倍）、「α版の通しプレイ確認」が予備日の 11/15 にかかっている件、ランタンを自作の仮モデルのままにするか素材に差し替えるか
 - 保留: CREDITS.md に今回の4素材（木箱と樽・ドラム缶と携行缶・UAZ・砂袋）の配布ページを追記（リンク待ち）、企画書のファイル名と中身にフルネーム・学校名が入っている件（笠井の判断待ち）

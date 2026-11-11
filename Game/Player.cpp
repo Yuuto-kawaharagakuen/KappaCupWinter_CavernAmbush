@@ -130,6 +130,7 @@ bool Player::Start()
 	m_gunModel.Init(GUN_MODEL_PATH);
 	m_gunModel.SetShadowCasterFlag(false);
 	m_moundModel.Init(MOUND_MODEL_PATH);
+	m_sandSplash.Init();
 	m_cameraCollider.Create(CAMERA_COLLISION_RADIUS);
 	m_gunModel.SetScale({ GUN_SCALE, GUN_SCALE, GUN_SCALE });
 	UpdateCamera();
@@ -149,6 +150,7 @@ void Player::Update()
 	UpdateCamera();
 	UpdateGun();
 	UpdateMound();
+	m_sandSplash.Update(g_gameTime->GetFrameDeltaTime());
 	if (!IsDead()) {
 		UpdateReload();
 		Shoot();
@@ -307,6 +309,7 @@ void Player::UpdateState()
 	if (m_state == enState_Surface) {
 		m_state = enState_Dive;
 		SetDiveBody(true);
+		m_sandSplash.Play(m_position, true);
 		return;
 	}
 	if (!HasHeadroom()) {
@@ -315,6 +318,7 @@ void Player::UpdateState()
 	}
 	m_state = enState_Surface;
 	SetDiveBody(false);
+	m_sandSplash.Play(m_position, false);
 }
 
 CharacterController& Player::GetCharaCon()
@@ -657,4 +661,5 @@ void Player::Render(RenderContext& rc)
 	if (m_isGunVisible) {
 		m_gunModel.Draw(rc);
 	}
+	m_sandSplash.Draw(rc);
 }
