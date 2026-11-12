@@ -1,6 +1,7 @@
 ﻿#include "stdafx.h"
 #include "Player.h"
 #include "SandBullet.h"
+#include "EffectManager.h"
 #include "HitUtil.h"
 #include "MathUtil.h"
 #include "ObjectNames.h"
@@ -32,6 +33,7 @@ namespace
 	const float SHOT_INTERVAL = 0.2f;
 	const float MUZZLE_OFFSET = 40.0f;
 	const int MAX_AMMO = 10;
+	const float PLAYER_FLASH_SCALE = 0.6f;
 	const float RELOAD_INTERVAL = 0.15f;
 	const char* const GUN_MODEL_PATH = "Assets/modelData/M4A4.tkm";
 	const Vector3 GUN_OFFSET = { 13.0f, -11.0f, 16.0f };
@@ -273,6 +275,10 @@ void Player::Shoot()
 
 	SandBullet* bullet = NewGO<SandBullet>(0, ObjectName::SAND_BULLET);
 	bullet->Init(muzzlePos, shotDir);
+	EffectManager* effect = EffectManager::Get();
+	if (effect != nullptr) {
+		effect->PlayMuzzleFlash(muzzlePos, shotDir, PLAYER_FLASH_SCALE);
+	}
 	m_shotCooldown = SHOT_INTERVAL;
 	m_ammo--;
 	m_isShot = true;

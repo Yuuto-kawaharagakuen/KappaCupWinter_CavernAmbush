@@ -3,7 +3,7 @@
 
 namespace
 {
-	const Vector3 CAVE_AMBIENT = { 0.16f, 0.13f, 0.10f };
+	const Vector3 CAVE_AMBIENT = { 0.11f, 0.115f, 0.13f };
 	const int SUN_LIGHT_NO = 0;
 	const int OUTDOOR_PARAM_LIGHT_NO = 3;
 	const Vector3 OUTDOOR_SUN_DIRECTION = { -0.6f, -0.75f, -0.3f };
@@ -13,9 +13,9 @@ namespace
 	const Vector3 DAYLIGHT_COLOR = { 5.5f, 5.0f, 4.2f };
 	const float DAYLIGHT_RANGE = 1700.0f;
 	const float DAYLIGHT_POW = 1.6f;
-	const Vector3 LAMP_COLOR = { 7.0f, 4.2f, 1.8f };
-	const float LAMP_RANGE = 850.0f;
-	const float LAMP_POW = 1.8f;
+	const Vector3 LAMP_COLOR = { 5.2f, 4.2f, 3.0f };
+	const float LAMP_RANGE = 700.0f;
+	const float LAMP_POW = 2.0f;
 	const char* const LANTERN_FRAME_PATH = "Assets/modelData/Prop_Lantern.tkm";
 	const char* const LANTERN_GLASS_PATH = "Assets/modelData/Prop_LanternGlass.tkm";
 	const char* const LANTERN_ROPE_PATH = "Assets/modelData/Prop_LanternRope.tkm";

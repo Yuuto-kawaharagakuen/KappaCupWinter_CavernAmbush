@@ -6,6 +6,7 @@ class Stage;
 class PlayerUI;
 class Fade;
 class GameFlow;
+class EffectManager;
 
 class Game : public IGameObject
 {
@@ -30,6 +31,7 @@ private:
 	Player* m_player = nullptr;
 	Stage* m_stage = nullptr;
 	PlayerUI* m_playerUI = nullptr;
+	EffectManager* m_effectManager = nullptr;
 	Fade* m_fade = nullptr;
 	GameFlow* m_flow = nullptr;
 	bool m_isGameOver = false;

@@ -5,6 +5,7 @@ class SandSplash
 public:
 	void Init();
 	void Play(const Vector3& position, bool isDive);
+	void PlayImpact(const Vector3& position, const Vector3& direction, int count, float sizeRate, float groundY);
 	void Update(float deltaTime);
 	void Draw(RenderContext& rc);
 

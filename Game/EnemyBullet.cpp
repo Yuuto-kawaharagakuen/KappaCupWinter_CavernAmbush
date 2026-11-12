@@ -1,6 +1,7 @@
 ﻿#include "stdafx.h"
 #include "EnemyBullet.h"
 #include "Player.h"
+#include "EffectManager.h"
 #include "ObjectNames.h"
 
 namespace
@@ -67,6 +68,12 @@ void EnemyBullet::Update()
 	m_model.SetPosition(m_position);
 	m_model.Update();
 
+	if (isWallHit) {
+		EffectManager* effect = EffectManager::Get();
+		if (effect != nullptr) {
+			effect->PlayEnemyBulletImpact(hitPos, m_direction);
+		}
+	}
 	if (m_traveled >= BULLET_RANGE || isWallHit) {
 		m_isDead = true;
 		DeleteGO(this);

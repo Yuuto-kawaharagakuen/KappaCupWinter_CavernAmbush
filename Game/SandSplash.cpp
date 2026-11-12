@@ -28,6 +28,11 @@ namespace
 	const float BUMP_GRAIN_UP_SPEED_MIN = 90.0f;
 	const float BUMP_GRAIN_UP_SPEED_MAX = 220.0f;
 	const float BUMP_GRAIN_SIZE_RATE = 0.7f;
+	const float IMPACT_SPEED_MIN = 120.0f;
+	const float IMPACT_SPEED_MAX = 320.0f;
+	const float IMPACT_SPREAD = 0.75f;
+	const float IMPACT_LIFT = 0.35f;
+	const float IMPACT_OFFSET = 3.0f;
 	const float GRAVITY = 1200.0f;
 	const float AIR_DRAG = 1.2f;
 	const float GRAIN_SIZE_MIN = 0.6f;
@@ -80,6 +85,20 @@ void SandSplash::Play(const Vector3& position, bool isDive)
 	}
 	for (int i = 0; i < SURFACE_BUMP_COUNT; i++) {
 		SpawnBump(position);
+	}
+}
+
+void SandSplash::PlayImpact(const Vector3& position, const Vector3& direction, int count, float sizeRate, float groundY)
+{
+	Vector3 back = direction * -1.0f;
+	back.Normalize();
+	for (int i = 0; i < count; i++) {
+		Vector3 spread = { RandomRange(-1.0f, 1.0f), RandomRange(-1.0f, 1.0f), RandomRange(-1.0f, 1.0f) };
+		Vector3 flyDirection = back + spread * IMPACT_SPREAD;
+		flyDirection.y += IMPACT_LIFT;
+		flyDirection.Normalize();
+		Vector3 velocity = flyDirection * RandomRange(IMPACT_SPEED_MIN, IMPACT_SPEED_MAX);
+		ResetParticle(NextParticle(), position + back * IMPACT_OFFSET, velocity, groundY, 0.0f, sizeRate);
 	}
 }
 

@@ -2,6 +2,7 @@
 #include "SandBullet.h"
 #include "EnemyBase.h"
 #include "PlayerUI.h"
+#include "EffectManager.h"
 #include "ObjectNames.h"
 
 namespace
@@ -65,16 +66,19 @@ void SandBullet::Update()
 	});
 
 	if (hitEnemy != nullptr) {
+		Vector3 hitPoint = m_position + (end - m_position) * nearestRate;
 		if (hitEnemy->Damage(BULLET_DAMAGE, m_direction)) {
 			PlayerUI* playerUI = FindGO<PlayerUI>(ObjectName::PLAYER_UI);
 			if (playerUI != nullptr) {
-				playerUI->NotifyHit(m_position + (end - m_position) * nearestRate, BULLET_DAMAGE, hitEnemy->IsDead());
+				playerUI->NotifyHit(hitPoint, BULLET_DAMAGE, hitEnemy->IsDead());
 			}
 		}
+		PlayImpact(hitPoint, true);
 		OnHit();
 		return;
 	}
 	if (isWallHit) {
+		PlayImpact(hitPos, false);
 		OnHit();
 		return;
 	}
@@ -86,6 +90,14 @@ void SandBullet::Update()
 
 	if (m_traveled >= BULLET_RANGE) {
 		OnHit();
+	}
+}
+
+void SandBullet::PlayImpact(const Vector3& position, bool isEnemyHit)
+{
+	EffectManager* effect = EffectManager::Get();
+	if (effect != nullptr) {
+		effect->PlayBulletImpact(position, m_direction, isEnemyHit);
 	}
 }
 

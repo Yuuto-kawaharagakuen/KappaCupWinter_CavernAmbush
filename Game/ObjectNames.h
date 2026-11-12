@@ -14,4 +14,5 @@ namespace ObjectName
 	const char* const ENEMY = "enemy";
 	const char* const ENEMY_BULLET = "enemyBullet";
 	const char* const SAND_BULLET = "sandBullet";
+	const char* const EFFECT_MANAGER = "effectManager";
 }

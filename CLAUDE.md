@@ -66,6 +66,7 @@
 - プレイヤーの銃: `Downloads\m4a4.fbx` を `tools\3dsMax\MakeM4.ms` で `M4.max` にして `names:M4A4 flat:true` で書き出す（原点はスコープの接眼部、テクスチャは `MaxData\textures\m4\`）
 - 潜行中の砂の盛り上がり: `MakeSandMound.ms`
 - 潜る／浮上するときの砂しぶきの粒: `MakeSandGrain.ms` で `SandGrain.max` → `names:SandGrain flat:true` で書き出す（テクスチャは床の砂と同じ）
+- 銃口の光: `tools\MakeEffectTextures.ps1`（星形と炎のテクスチャ、`MaxData\textures\effects\`）→ `MakeMuzzleFlash.ms` で `MuzzleFlash.max` → `names:MuzzleFlash flat:true` で書き出す。原点は銃口で、+Z（Max の -Y）が撃つ向き。正面の星形の板1枚と十字に交わる炎の板2枚
 - 門の横の穴: `MakePropTextures.ps1` で `T_Hole` を作ってから `MakeHole.ms` で `Hole.max` にして `names:StageHole` で書き出す
 - マップに置く小物（`Prop_*`）: `Downloads` の4つの FBX（砂袋の壁は ProOptimizer で頂点を12%に削減）を `MakeProps.ms` で `Props.max` にして `ExportTkm.ms` で書き出す（原点は底面の中心、テクスチャは `MaxData\textures\props\` から `-w 1024 -h 1024` を足して DDS にする。木箱・木樽は FBX にテクスチャが無いので `tools\MakePropTextures.ps1` で自作し、`MakeProps.ms` より先に実行する）。配置は `MakeStage1.ms` の `propClusters`（Point の名前が tkm の名前になり、当たり判定も付く）
 - 敵（SWAT）: 元データは `Documents\Swat`（CGTrader、Mixamo の骨）。`MakeSwat.ms` で `Swat.max` を作る（銃を右手に合体・頂点を18%に削減・待機/歩き/撃つ/倒れる/見回す/構えのキーを打つ）。テクスチャは `MaxData\textures\swat\` から 1K の DDS にする（敵は数が多いので軽さ優先）
@@ -86,7 +87,8 @@
 - 外の日差しはゲーム側の `Game\Assets\shader\DeferredLighting.fx`（Shift-JIS・BOMなし）で入口から外だけに付ける。ディレクションライト0が太陽（影あり）、ディレクションライト3は光ではなくパラメータ置き場（direction = 入口の x・ぼかす長さ・有効フラグ、color = 外の環境光）。設定は `Stage::InitLighting`。トーンマップとブルームはエンジン側でオフ
 - エンジンのディファード以外（`model.fx` の半透明・フォワード）はこの切り替えを知らないので、使うときは注意
 - `ModelRender.cpp` は `Draw(rc, 1)` と書かれているが、LevelRender で同じ名前の小物をインスタンシングでまとめても全部見えている（笠井が確認）。砂しぶきの `SandSplash` は粒ごとに ModelRender を持っている
-- エフェクトは Effekseer のファイルが無いので、今はモデルをコードで動かして作る
+- エフェクトは Effekseer のファイルが無いので、今はモデルをコードで動かして作る。光るものは `Emissive.fx` をフォワードで描き、`m_alphaBlendMode = AlphaBlendMode_Add`・`m_isDepthWrite = false`・`m_cullMode = D3D12_CULL_MODE_NONE` にすると黒い部分が消えて光だけが足される
+- 撃ったときと着弾のエフェクトは `EffectManager`（Game が作る、`EffectManager::Get()`）にまとめている
 - 潜行中のカプセルは、エンジンの CharacterController が「下向きにゆるく傾いた天井」を壁と見なさずにすり抜けるので、`Player::IsDiveHeadBlocked` で体の中心の上（高さ60まで、半径10の球）をスイープして止め、当たったら X か Z だけの移動に切り替える（`LimitDiveMove`）。抜け道（`MakeStage1.ms` の `G_TUNNEL_HALF_WIDTH` 95・`G_TUNNEL_HEIGHT` 135）は横をまっすぐ立てた箱形にして、ゆるい天井の斜面を作らない。壁モデルの厚み（Shell 40）の分だけ天井は低くなり、床からの隙間は約101（潜行中のカプセル80は通れ、浮上中の170は通れない）。広げすぎると洞窟の壁ごと削れて抜け道に見えなくなる
 - 保険として、真上に天井が無い位置（＝マップの外）に出たら直前の位置に戻す（`Player::HasCeilingAbove`・`m_safePosition`）
 - フォント（太字）には ▶ ！（）が無い。使う前にグリフがあるか確かめる
@@ -163,6 +165,9 @@
 ### 2026-11-11
 - 砂しぶき: 潜るときは OK。浮上のときは「周りの砂がボコボコするくらい」にしたいとのことで、高く吹き上げるのをやめ、周りに小さな砂の山（`SandMound.tkm` を小さくしたもの）を時間差で7つ盛り上げて沈め、そこから砂粒を少し跳ねさせるようにした（`SpawnBump`・`SpawnBumpGrains`・`UpdateBump`）
 - 笠井の OK が出たのでコミットし、Notion の「潜行時の砂しぶきエフェクトの制作」を完了にした。同じ木箱・樽が複数あっても全部見えていることも確認してもらった
-- 次回: 「マズルフラッシュ・被弾エフェクトの制作」（期日 11/13）
+- マズルフラッシュと着弾のエフェクト（`EffectManager`）: 撃つと銃口に星形＋炎の光（加算合成、0.06秒）と、まわりを照らす一瞬のポイントライトが出る（プレイヤーは小さめ、雑魚兵は大きめ）。砂弾が壁や床に当たると砂粒が跳ね、敵に当たるともっと多く跳ねる。敵の弾が壁に当たると小さな砂粒が少し跳ねる（`PlayMuzzleFlash`・`PlayBulletImpact`・`PlayEnemyBulletImpact`、砂粒は `SandSplash::PlayImpact`）。Notion のタスクは「進行中」
+- 壁・床・小物・兵士が全部同じ色に見える件: テクスチャは砂（平均 R179 G151 B114）と岩（R92 G79 B73）で違うが、ランプの光が強いオレンジ（7, 4.2, 1.8）で範囲も広く、全部を同じ黄土色に染めていた。ランプを白っぽい暖色（5.2, 4.2, 3.0）・範囲700・累乗2.0に、洞窟の環境光を少し青みのある中性色（0.11, 0.115, 0.13）にした（`Stage.cpp` の `LAMP_*`・`CAVE_AMBIENT`）
+- マズルフラッシュ・着弾・ライティングの色とも笠井の OK。コミットして Notion の「マズルフラッシュ・被弾エフェクトの制作」を完了にした
+- 次回: Notion の次のタスク（期日順）
 - 未決定: Notion のステータス（砂の盛り上がり・ステージ1の配置・障害物モデル・全滅で進める・クリアタイムは笠井のOK待ち）、「敵の撃破エフェクトの制作」タスクの扱い、「潜れない場所の判定」（保留中）、スコープ倍率の仕様（上の節は1.5倍、コードは1.25倍）、「α版の通しプレイ確認」が予備日の 11/15 にかかっている件、ランタンを自作の仮モデルのままにするか素材に差し替えるか
 - 保留: CREDITS.md に今回の4素材（木箱と樽・ドラム缶と携行缶・UAZ・砂袋）の配布ページを追記（リンク待ち）、企画書のファイル名と中身にフルネーム・学校名が入っている件（笠井の判断待ち）

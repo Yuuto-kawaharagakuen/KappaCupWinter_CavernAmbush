@@ -11,6 +11,7 @@ public:
 
 	void Init(const Vector3& position, const Vector3& direction);
 	void OnHit();
+	void PlayImpact(const Vector3& position, bool isEnemyHit);
 
 	const Vector3& GetPosition() const
 	{

@@ -9,6 +9,7 @@
 #include "Fade.h"
 #include "Soldier.h"
 #include "EnemyBullet.h"
+#include "EffectManager.h"
 #include "ObjectNames.h"
 
 namespace
@@ -60,6 +61,7 @@ Game::~Game()
 	DeleteGO(m_player);
 	DeleteGO(m_stage);
 	DeleteGO(m_playerUI);
+	DeleteGO(m_effectManager);
 	QueryGOs<EnemyBase>(ObjectName::ENEMY, [](EnemyBase* enemy) {
 		DeleteGO(enemy);
 		return true;
@@ -77,6 +79,7 @@ bool Game::Start()
 
 	m_stage = NewGO<Stage>(0, ObjectName::STAGE);
 	m_stage->Load(m_flow->GetStageLevelPath());
+	m_effectManager = NewGO<EffectManager>(0, ObjectName::EFFECT_MANAGER);
 
 	m_player = NewGO<Player>(0, ObjectName::PLAYER);
 	m_player->SetPosition(m_stage->GetPlayerStartPosition());

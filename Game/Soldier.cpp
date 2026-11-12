@@ -2,6 +2,7 @@
 #include "Soldier.h"
 #include "Player.h"
 #include "EnemyBullet.h"
+#include "EffectManager.h"
 #include "MathUtil.h"
 #include "ObjectNames.h"
 
@@ -71,6 +72,7 @@ namespace
 	const float MUZZLE_HEIGHT = 152.0f;
 	const float MUZZLE_FORWARD = 62.0f;
 	const float MUZZLE_RIGHT = -6.0f;
+	const float ENEMY_FLASH_SCALE = 1.1f;
 
 	const float ATTACK_MOVE_SPEED = 220.0f;
 	const float ATTACK_MOVE_TIMEOUT = 2.0f;
@@ -626,6 +628,10 @@ void Soldier::Shoot()
 
 	EnemyBullet* bullet = NewGO<EnemyBullet>(0, ObjectName::ENEMY_BULLET);
 	bullet->Init(muzzle, direction, SHOT_DAMAGE);
+	EffectManager* effect = EffectManager::Get();
+	if (effect != nullptr) {
+		effect->PlayMuzzleFlash(muzzle, direction, ENEMY_FLASH_SCALE);
+	}
 }
 
 void Soldier::OnDamage()

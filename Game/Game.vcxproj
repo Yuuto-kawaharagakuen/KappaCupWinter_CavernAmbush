@@ -226,6 +226,7 @@
     <ClCompile Include="Stage.cpp" />
     <ClCompile Include="SandBullet.cpp" />
     <ClCompile Include="SandSplash.cpp" />
+    <ClCompile Include="EffectManager.cpp" />
     <ClCompile Include="Fade.cpp" />
     <ClCompile Include="GameOver.cpp" />
     <ClCompile Include="GameClear.cpp" />
@@ -249,6 +250,7 @@
     <ClInclude Include="Stage.h" />
     <ClInclude Include="SandBullet.h" />
     <ClInclude Include="SandSplash.h" />
+    <ClInclude Include="EffectManager.h" />
     <ClInclude Include="Fade.h" />
     <ClInclude Include="GameOver.h" />
     <ClInclude Include="GameClear.h" />
