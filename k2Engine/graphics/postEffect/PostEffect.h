@@ -47,6 +47,14 @@ namespace nsK2Engine {
         {
             m_calsSceneLuminance.NotifyChangeScene(changeSceneTime);
         }
+        void EnableDof()
+        {
+            m_dof.Enable();
+        }
+        void DisableDof()
+        {
+            m_dof.Disable();
+        }
         /// <summary>
         /// トーンマップをオフに。
         /// </summary>

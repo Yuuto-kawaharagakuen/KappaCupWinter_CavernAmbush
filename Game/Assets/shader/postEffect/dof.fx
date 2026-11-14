@@ -37,6 +37,10 @@ Texture2D<float4> depthTexture : register(t1); // 深度テクスチャ
 
 sampler Sampler : register(s0);
 
+static const float DOF_START = 1200.0f;
+static const float DOF_END = 2500.0f;
+static const float DOF_MAX_RATE = 0.3f;
+
 /////////////////////////////////////////////////////////
 // ボケ画像書き込み用。
 /////////////////////////////////////////////////////////
@@ -48,13 +52,13 @@ float4 PSMain(PSInput In) : SV_Target0
     float depth = depthTexture.Sample( Sampler, In.uv ).z;
     // カメラ空間での深度値が200以下ならピクセルキル 
     //      -> ボケ画像を描きこまない。
-    clip( depth - 500.0f);
+    clip( depth - DOF_START );
     // ボケ画像をサンプリング。
     float4 boke = bokeTexture.Sample( Sampler, In.uv );
     // 深度値から不透明度を計算する。
     // 深度値200からボケが始まり、深度値500で最大のボケ具合になる。
     //  -> つまり、深度値500で不透明度が1になる。
-    boke.a = min( 1.0f, ( depth - 500.0f ) / 1000.0f );
+    boke.a = min( 1.0f, ( depth - DOF_START ) / ( DOF_END - DOF_START ) ) * DOF_MAX_RATE;
     // ボケ画像を出力。
     return boke;
 }

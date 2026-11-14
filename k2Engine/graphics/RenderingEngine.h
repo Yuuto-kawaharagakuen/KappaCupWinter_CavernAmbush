@@ -356,6 +356,14 @@ namespace nsK2Engine {
         {
             return m_deferredLightingCB;
         }
+        void EnableDof()
+        {
+            m_postEffect.EnableDof();
+        }
+        void DisableDof()
+        {
+            m_postEffect.DisableDof();
+        }
         /// <summary>
         /// トーンマップを無効にする
         /// </summary>

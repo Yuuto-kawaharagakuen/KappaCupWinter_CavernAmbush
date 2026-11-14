@@ -8,8 +8,8 @@ namespace nsK2Engine {
         //使用するテクスチャは２枚
         combineBokeImageSpriteInitData.m_textures[0] = &bokeTexture;
         combineBokeImageSpriteInitData.m_textures[1] = &depthTexture;
-        combineBokeImageSpriteInitData.m_width = 1280;
-        combineBokeImageSpriteInitData.m_height = 720;
+        combineBokeImageSpriteInitData.m_width = FRAME_BUFFER_W;
+        combineBokeImageSpriteInitData.m_height = FRAME_BUFFER_H;
         combineBokeImageSpriteInitData.m_fxFilePath = "Assets/shader/postEffect/dof.fx";
         combineBokeImageSpriteInitData.m_colorBufferFormat[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
         // 距離を利用してボケ画像をアルファブレンディングするので、半透明合成モードにする
