@@ -14,23 +14,39 @@ namespace
 
 	const Vector3 VIGNETTE_POSITION = { 0.0f, 0.0f, 0.0f };
 	const Vector2 VIGNETTE_SIZE = { 1920.0f, 1080.0f };
+	const char* const GUIDE_ICON_PATHS[] = {
+		"Assets/sprite/UI_ButtonB.DDS",
+		"Assets/sprite/UI_ButtonX.DDS",
+		"Assets/sprite/UI_ButtonLT.DDS",
+		"Assets/sprite/UI_ButtonRT.DDS",
+	};
+	const float GUIDE_ICON_X = 878.0f;
+	const float GUIDE_TOP_Y = 350.0f;
+	const float GUIDE_ROW_SPACING = 54.0f;
+	const Vector2 GUIDE_ICON_SIZE = { 46.0f, 46.0f };
+	const float GUIDE_TEXT_SCALE = 0.6f;
+	const float GUIDE_CHAR_WIDTH = 58.0f;
+	const float GUIDE_TEXT_GAP = 12.0f;
+	const float GUIDE_TEXT_OFFSET_Y = 16.0f;
+	const float GUIDE_DIM_ALPHA = 0.4f;
+	const float GUIDE_FADE_SPEED = 8.0f;
 	const Vector4 VIGNETTE_COLOR = { 0.85f, 0.06f, 0.04f, 1.0f };
 	const float DAMAGE_FLASH_DECAY = 3.0f;
 	const float DAMAGE_FLASH_ALPHA = 0.75f;
 	const float LOW_HP_ALPHA = 0.28f;
 	const float LOW_HP_PULSE_SPEED = 5.0f;
 
-	const Vector3 HP_SHADE_POSITION = { -700.0f, -430.0f, 0.0f };
-	const Vector3 AMMO_SHADE_POSITION = { 700.0f, -430.0f, 0.0f };
+	const Vector3 HP_SHADE_POSITION = { -700.0f, 454.0f, 0.0f };
+	const Vector3 AMMO_SHADE_POSITION = { 700.0f, 454.0f, 0.0f };
 	const Vector2 SHADE_SIZE = { 760.0f, 320.0f };
 	const Vector4 SHADE_COLOR = { 1.0f, 1.0f, 1.0f, 0.35f };
 
-	const Vector3 HP_LABEL_POSITION = { -900.0f, -404.0f, 0.0f };
+	const Vector3 HP_LABEL_POSITION = { -900.0f, 480.0f, 0.0f };
 	const float HP_LABEL_SCALE = 0.55f;
 	const Vector4 HP_LABEL_COLOR = { 1.0f, 1.0f, 1.0f, 0.7f };
-	const Vector3 HP_VALUE_POSITION = { -852.0f, -384.0f, 0.0f };
+	const Vector3 HP_VALUE_POSITION = { -852.0f, 500.0f, 0.0f };
 	const float HP_VALUE_SCALE = 1.2f;
-	const Vector3 HP_BAR_POSITION = { -900.0f, -462.0f, 0.0f };
+	const Vector3 HP_BAR_POSITION = { -900.0f, 422.0f, 0.0f };
 	const Vector2 HP_BAR_SIZE = { 340.0f, 12.0f };
 	const Vector4 HP_BAR_BACK_COLOR = { 0.0f, 0.0f, 0.0f, 0.45f };
 	const Vector4 HP_BAR_LAG_COLOR = { 1.0f, 0.85f, 0.75f, 0.85f };
@@ -44,20 +60,19 @@ namespace
 	const float HP_SHAKE_POWER = 9.0f;
 
 	const float AMMO_PIP_RIGHT = 900.0f;
-	const float AMMO_PIP_Y = -466.0f;
+	const float AMMO_PIP_Y = 418.0f;
 	const float AMMO_PIP_SPACING = 19.0f;
 	const Vector2 AMMO_PIP_SIZE = { 16.0f, 32.0f };
 	const Vector4 AMMO_PIP_COLOR = { 1.0f, 0.93f, 0.78f, 1.0f };
 	const Vector4 AMMO_PIP_EMPTY_COLOR = { 1.0f, 1.0f, 1.0f, 0.16f };
 	const float AMMO_PIP_POP_TIME = 0.18f;
-	const float AMMO_VALUE_RIGHT = 826.0f;
-	const float AMMO_VALUE_Y = -350.0f;
-	const float AMMO_VALUE_SCALE = 1.9f;
+	const float AMMO_TEXT_RIGHT = 900.0f;
+	const float AMMO_VALUE_Y = 500.0f;
+	const float AMMO_VALUE_SCALE = 1.2f;
+	const float AMMO_SLASH_GAP = 4.0f;
 	const Vector4 AMMO_LOW_COLOR = { 1.0f, 0.55f, 0.25f, 1.0f };
 	const Vector4 AMMO_EMPTY_COLOR = { 1.0f, 0.28f, 0.22f, 1.0f };
 	const int AMMO_LOW_NUM = 3;
-	const Vector3 AMMO_MAX_POSITION = { 836.0f, -394.0f, 0.0f };
-	const float AMMO_MAX_SCALE = 0.7f;
 	const Vector4 AMMO_MAX_COLOR = { 1.0f, 1.0f, 1.0f, 0.65f };
 	const float AMMO_PUNCH_DECAY = 10.0f;
 	const float AMMO_PUNCH_SCALE = 0.18f;
@@ -78,11 +93,11 @@ namespace
 	const Vector4 HIT_COLOR = { 1.0f, 1.0f, 1.0f, 1.0f };
 	const Vector4 HIT_KILL_COLOR = { 1.0f, 0.25f, 0.2f, 1.0f };
 
-	const Vector3 STATUS_PILL_POSITION = { 0.0f, 470.0f, 0.0f };
-	const Vector2 STATUS_PILL_SIZE = { 300.0f, 46.0f };
-	const Vector3 STATUS_DIVE_POSITION = { -120.0f, 486.0f, 0.0f };
-	const Vector3 STATUS_NO_SHOT_POSITION = { -4.0f, 486.0f, 0.0f };
-	const float STATUS_TEXT_SCALE = 0.62f;
+	const Vector3 STATUS_PILL_POSITION = { 0.0f, 460.0f, 0.0f };
+	const Vector2 STATUS_PILL_SIZE = { 420.0f, 64.0f };
+	const Vector3 STATUS_DIVE_POSITION = { -170.0f, 482.0f, 0.0f };
+	const Vector3 STATUS_NO_SHOT_POSITION = { -8.0f, 482.0f, 0.0f };
+	const float STATUS_TEXT_SCALE = 0.85f;
 	const Vector4 STATUS_DIVE_COLOR = { 1.0f, 0.8f, 0.2f, 1.0f };
 	const Vector4 STATUS_NO_SHOT_COLOR = { 1.0f, 1.0f, 1.0f, 0.8f };
 	const float STATUS_FADE_SPEED = 6.0f;
@@ -175,12 +190,16 @@ bool PlayerUI::Start()
 	m_vignette.SetMulColor(WithAlpha(VIGNETTE_COLOR, 0.0f));
 	m_vignette.Update();
 	InitSprite(m_scope, "Assets/sprite/UI_Scope.DDS", VIGNETTE_SIZE, VIGNETTE_POSITION);
+	InitSprite(m_switchFade, "Assets/sprite/UI_White.DDS", VIGNETTE_SIZE, VIGNETTE_POSITION);
+	m_switchFade.SetMulColor({ 0.0f, 0.0f, 0.0f, 0.0f });
+	m_switchFade.Update();
 
 	InitHp();
 	InitAmmo();
 	InitCrosshair();
 	InitStatus();
 	InitReload();
+	InitGuide();
 
 	for (auto& popup : m_damagePopups) {
 		InitText(popup.font, L"", Vector3::Zero, POPUP_SCALE, POPUP_COLOR, enFontType::Bold);
@@ -220,8 +239,8 @@ void PlayerUI::InitAmmo()
 		InitSprite(m_ammoPips[i], "Assets/sprite/UI_Pip.DDS", AMMO_PIP_SIZE, MakePosition(x, AMMO_PIP_Y));
 	}
 
-	InitText(m_ammoValue, L"", MakePosition(AMMO_VALUE_RIGHT, AMMO_VALUE_Y), AMMO_VALUE_SCALE, WHITE, enFontType::Bold);
-	InitText(m_ammoMax, L"", AMMO_MAX_POSITION, AMMO_MAX_SCALE, AMMO_MAX_COLOR, enFontType::Bold);
+	InitText(m_ammoValue, L"", MakePosition(AMMO_TEXT_RIGHT, AMMO_VALUE_Y), AMMO_VALUE_SCALE, WHITE, enFontType::Bold);
+	InitText(m_ammoMax, L"", MakePosition(AMMO_TEXT_RIGHT, AMMO_VALUE_Y), AMMO_VALUE_SCALE, AMMO_MAX_COLOR, enFontType::Bold);
 	InitText(m_ammoHint, L"B で潜ってリロード", AMMO_HINT_POSITION, AMMO_HINT_SCALE, AMMO_EMPTY_COLOR, enFontType::Bold);
 }
 
@@ -319,14 +338,84 @@ void PlayerUI::Update()
 		ShowMessage(L"天井が低くて浮上できない", SURFACE_BLOCKED_MESSAGE_TIME);
 	}
 	UpdateVignette(deltaTime);
+	UpdateSwitchFade();
 	UpdateHp(deltaTime);
 	UpdateAmmo(deltaTime);
 	UpdateCrosshair(deltaTime);
 	UpdateStatus(deltaTime);
 	UpdateReload(deltaTime);
+	UpdateGuide(deltaTime);
 	UpdateDamagePopups(deltaTime);
 	UpdateScope();
 	UpdateMessage(deltaTime);
+}
+
+void PlayerUI::InitGuide()
+{
+	for (int i = 0; i < GUIDE_ROW_NUM; i++) {
+		Vector3 iconPosition = MakePosition(GUIDE_ICON_X, GUIDE_TOP_Y - GUIDE_ROW_SPACING * i);
+		for (int button = 0; button < enGuideButton_Num; button++) {
+			InitSprite(m_guideRows[i].icons[button], GUIDE_ICON_PATHS[button], GUIDE_ICON_SIZE, iconPosition);
+		}
+		InitText(m_guideRows[i].label, L"", iconPosition, GUIDE_TEXT_SCALE, WHITE, enFontType::Bold);
+	}
+}
+
+void PlayerUI::UpdateGuide(float deltaTime)
+{
+	GuideEntry entries[GUIDE_ROW_NUM];
+	int count = 0;
+	if (m_player->IsDiving()) {
+		if (m_player->IsReloading()) {
+			entries[count++] = { enGuideButton_X, L"リロード中", true };
+		}
+		else if (m_player->GetAmmo() < m_player->GetMaxAmmo()) {
+			entries[count++] = { enGuideButton_X, L"リロード", false };
+		}
+		entries[count++] = { enGuideButton_B, L"浮上する", false };
+	}
+	else {
+		entries[count++] = { enGuideButton_RT, L"射撃", m_player->GetAmmo() <= 0 };
+		entries[count++] = { enGuideButton_LT, L"スコープ", false };
+		entries[count++] = { enGuideButton_B, L"潜る", false };
+	}
+
+	float target = m_player->IsSwitching() || m_player->IsDead() ? 0.0f : 1.0f;
+	m_guideAlpha = MathUtil::Damp(m_guideAlpha, target, GUIDE_FADE_SPEED, deltaTime);
+
+	for (int i = 0; i < GUIDE_ROW_NUM; i++) {
+		GuideRow& row = m_guideRows[i];
+		int entryIndex = i;
+		row.isVisible = entryIndex < count && m_guideAlpha > 0.01f;
+		if (!row.isVisible) {
+			continue;
+		}
+		const GuideEntry& entry = entries[entryIndex];
+		row.button = entry.button;
+		row.isDim = entry.isDim;
+		float alpha = m_guideAlpha * (entry.isDim ? GUIDE_DIM_ALPHA : 1.0f);
+		SpriteRender& icon = row.icons[row.button];
+		icon.SetMulColor(WithAlpha(WHITE, alpha));
+		icon.Update();
+
+		float y = GUIDE_TOP_Y - GUIDE_ROW_SPACING * i;
+		float width = static_cast<float>(wcslen(entry.text)) * GUIDE_CHAR_WIDTH * GUIDE_TEXT_SCALE;
+		float x = GUIDE_ICON_X - GUIDE_ICON_SIZE.x * 0.5f - GUIDE_TEXT_GAP - width;
+		row.label.SetText(entry.text);
+		row.label.SetPosition(MakePosition(x, y + GUIDE_TEXT_OFFSET_Y));
+		SetTextAlpha(row.label, WHITE, alpha);
+	}
+}
+
+void PlayerUI::UpdateSwitchFade()
+{
+	float darkness = m_player->GetSwitchDarkness();
+	m_isSwitchFadeVisible = darkness > 0.0f;
+	if (!m_isSwitchFadeVisible) {
+		return;
+	}
+	m_switchFade.SetMulColor({ 0.0f, 0.0f, 0.0f, darkness });
+	m_switchFade.Update();
 }
 
 void PlayerUI::UpdateVignette(float deltaTime)
@@ -423,14 +512,20 @@ void PlayerUI::UpdateAmmo(float deltaTime)
 		m_ammoPips[i].Update();
 	}
 
+	int maxAmmo = m_player->GetMaxAmmo();
+	float maxX = AMMO_TEXT_RIGHT - (CountDigits(maxAmmo) + 1) * DIGIT_WIDTH * AMMO_VALUE_SCALE;
+	wchar_t text[16];
+	swprintf_s(text, L"/%d", maxAmmo);
+	m_ammoMax.SetText(text);
+	m_ammoMax.SetPosition(MakePosition(maxX, AMMO_VALUE_Y));
+
 	float scale = AMMO_VALUE_SCALE * (1.0f + m_ammoPunch * AMMO_PUNCH_SCALE);
 	float width = CountDigits(ammo) * DIGIT_WIDTH * scale;
 	float rise = (scale - AMMO_VALUE_SCALE) * 20.0f;
-	wchar_t text[16];
 	swprintf_s(text, L"%d", ammo);
 	m_ammoValue.SetText(text);
 	m_ammoValue.SetScale(scale);
-	m_ammoValue.SetPosition(MakePosition(AMMO_VALUE_RIGHT - width, AMMO_VALUE_Y + rise));
+	m_ammoValue.SetPosition(MakePosition(maxX - AMMO_SLASH_GAP - width, AMMO_VALUE_Y + rise));
 	if (ammo == 0) {
 		m_ammoValue.SetColor(AMMO_EMPTY_COLOR);
 	}
@@ -440,9 +535,6 @@ void PlayerUI::UpdateAmmo(float deltaTime)
 	else {
 		m_ammoValue.SetColor(WHITE);
 	}
-
-	swprintf_s(text, L"/%d", m_player->GetMaxAmmo());
-	m_ammoMax.SetText(text);
 
 	m_isHintVisible = ammo == 0 && !m_player->IsDiving() && !m_player->IsSwitching();
 	if (m_isHintVisible) {
@@ -594,6 +686,9 @@ void PlayerUI::Render(RenderContext& rc)
 		m_scope.Draw(rc);
 	}
 	m_vignette.Draw(rc);
+	if (m_isSwitchFadeVisible) {
+		m_switchFade.Draw(rc);
+	}
 
 	m_hpShade.Draw(rc);
 	m_ammoShade.Draw(rc);
@@ -609,6 +704,13 @@ void PlayerUI::Render(RenderContext& rc)
 	}
 	m_ammoValue.Draw(rc);
 	m_ammoMax.Draw(rc);
+
+	for (auto& row : m_guideRows) {
+		if (row.isVisible) {
+			row.icons[row.button].Draw(rc);
+			row.label.Draw(rc);
+		}
+	}
 
 	if (m_isCrosshairVisible) {
 		for (auto& line : m_crossLines) {

@@ -41,6 +41,14 @@ public:
 	{
 		return m_cameraBlend != (IsDiving() ? 1.0f : 0.0f);
 	}
+	bool IsUnderground() const
+	{
+		return IsSwitching() ? !IsDiving() : IsDiving();
+	}
+	bool IsWorldPaused() const
+	{
+		return IsSwitching() && !IsDead();
+	}
 	Vector3 GetLookDirection() const;
 	bool CanShoot() const;
 	int GetAmmo() const
@@ -73,6 +81,8 @@ public:
 		return m_aimBlend > 0.0f;
 	}
 	float GetAimRate() const;
+	float GetSwitchProgress() const;
+	float GetSwitchDarkness() const;
 	Vector3 GetMuzzlePosition() const;
 	bool ConsumeShotFlag()
 	{
@@ -97,6 +107,9 @@ private:
 	Vector3 LimitDiveMove(const Vector3& from, const Vector3& to) const;
 	bool HasCeilingAbove(const Vector3& position) const;
 	void UpdateAim();
+	void UpdateDiveMoveSound();
+	bool UpdateShotTrigger();
+	void UpdateDiveTrail();
 	void UpdateReload();
 	void Shoot();
 	void Rotate();
@@ -139,6 +152,12 @@ private:
 	float m_gunBobPhase = 0.0f;
 	float m_gunBobWeight = 0.0f;
 	float m_gunRaise = 0.0f;
+	bool m_isRaiseSoundPending = false;
+	bool m_wasAiming = false;
+	bool m_isShotTriggerHeld = false;
+	float m_shotTriggerReleaseTimer = 0.0f;
+	float m_diveTrailTimer = 0.0f;
+	SoundSource* m_diveMoveSound = nullptr;
 	float m_gunSwayYaw = 0.0f;
 	float m_gunSwayPitch = 0.0f;
 	float m_lastYaw = 0.0f;
@@ -146,6 +165,9 @@ private:
 	float m_moundPhase = 0.0f;
 	float m_moundMoveWeight = 0.0f;
 	bool m_isMoundVisible = false;
+	bool m_isSurfaceBurstDone = true;
+	float m_shakeTime = 0.0f;
+	float m_eyeHeight = 160.0f;
 	float m_aimBlend = 0.0f;
 	float m_baseViewAngle = 0.0f;
 	Vector3 m_gunPosition = Vector3::Zero;

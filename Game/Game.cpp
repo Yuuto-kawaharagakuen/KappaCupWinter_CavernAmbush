@@ -10,6 +10,7 @@
 #include "Soldier.h"
 #include "EnemyBullet.h"
 #include "EffectManager.h"
+#include "SoundList.h"
 #include "ObjectNames.h"
 
 namespace
@@ -18,9 +19,7 @@ namespace
 	const float FLOOR_RAY_TOP = 280.0f;
 	const float FLOOR_RAY_BOTTOM = -600.0f;
 	const float SPAWN_HEIGHT_OFFSET = 5.0f;
-	const float HOLE_ENTER_RADIUS = 130.0f;
-	const float HOLE_OPEN_MESSAGE_TIME = 5.0f;
-	const float HOLE_LOCKED_MESSAGE_TIME = 0.5f;
+	const float EXIT_RADIUS = 120.0f;
 	struct SoldierData
 	{
 		float x;
@@ -76,6 +75,7 @@ bool Game::Start()
 {
 	m_fade = Fade::Get();
 	m_flow = GameFlow::Get();
+	SoundList::Init();
 
 	m_stage = NewGO<Stage>(0, ObjectName::STAGE);
 	m_stage->Load(m_flow->GetStageLevelPath());
@@ -112,40 +112,17 @@ void Game::Update()
 		return;
 	}
 
-	m_clearTime += g_gameTime->GetFrameDeltaTime();
-	UpdateHole();
+	if (!m_player->IsWorldPaused()) {
+		m_clearTime += g_gameTime->GetFrameDeltaTime();
+	}
+	UpdateExit();
 }
 
-int Game::CountAliveEnemies() const
+void Game::UpdateExit()
 {
-	int count = 0;
-	QueryGOs<EnemyBase>(ObjectName::ENEMY, [&](EnemyBase* enemy) {
-		if (!enemy->IsDead()) {
-			count++;
-		}
-		return true;
-	});
-	return count;
-}
-
-void Game::UpdateHole()
-{
-	int aliveCount = CountAliveEnemies();
-	if (aliveCount == 0 && !m_isHoleOpen) {
-		m_isHoleOpen = true;
-		m_playerUI->ShowMessage(L"敵を全滅させた 門の横の穴に潜れ", HOLE_OPEN_MESSAGE_TIME);
-	}
-
-	Vector3 toHole = m_stage->GetHolePosition() - m_player->GetPosition();
-	toHole.y = 0.0f;
-	if (toHole.Length() > HOLE_ENTER_RADIUS || !m_player->IsDiving() || m_player->IsSwitching()) {
-		return;
-	}
-
-	if (!m_isHoleOpen) {
-		wchar_t text[32];
-		swprintf_s(text, L"まだ敵が残っている あと %d 体", aliveCount);
-		m_playerUI->ShowMessage(text, HOLE_LOCKED_MESSAGE_TIME);
+	Vector3 toExit = m_stage->GetExitPosition() - m_player->GetPosition();
+	toExit.y = 0.0f;
+	if (toExit.Length() > EXIT_RADIUS || !m_player->IsDiving() || m_player->IsSwitching()) {
 		return;
 	}
 

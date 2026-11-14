@@ -3,6 +3,7 @@
 #include "Game.h"
 #include "GameFlow.h"
 #include "Fade.h"
+#include "SoundList.h"
 #include "ObjectNames.h"
 
 namespace
@@ -71,6 +72,7 @@ void Title::Update()
 	if (g_pad[0]->IsTrigger(enButtonA) || g_pad[0]->IsTrigger(enButtonStart)) {
 		m_isStarting = true;
 		m_fade->StartFadeOut();
+		SoundList::Play(SoundId::MenuDecide, SoundList::MENU_VOLUME);
 	}
 }
 

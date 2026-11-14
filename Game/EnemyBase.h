@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+class Player;
+
 class EnemyBase : public IGameObject
 {
 public:
@@ -47,6 +49,7 @@ private:
 	void UpdateDeath();
 	void UpdateModel();
 
+	Player* m_worldPlayer = nullptr;
 	int m_hp = 1;
 	int m_maxHp = 1;
 	float m_radius = 0.0f;

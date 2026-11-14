@@ -2,6 +2,7 @@
 #include "Player.h"
 #include "SandBullet.h"
 #include "EffectManager.h"
+#include "SoundList.h"
 #include "HitUtil.h"
 #include "MathUtil.h"
 #include "ObjectNames.h"
@@ -28,13 +29,25 @@ namespace
 	const float TPS_TARGET_HEIGHT = 50.0f;
 	const float TPS_DISTANCE = 300.0f;
 	const float TPS_HEIGHT = 50.0f;
-	const float CAMERA_BLEND_TIME = 0.8f;
+	const float CAMERA_BLEND_TIME = 1.6f;
 	const float LOOK_DISTANCE = 100.0f;
 	const float SHOT_INTERVAL = 0.2f;
 	const float MUZZLE_OFFSET = 40.0f;
 	const int MAX_AMMO = 10;
 	const float PLAYER_FLASH_SCALE = 0.6f;
 	const float RELOAD_INTERVAL = 0.15f;
+	const float SHOT_VOLUME = 0.45f;
+	const float RELOAD_VOLUME = 0.8f;
+	const float GUN_RAISE_VOLUME = 0.8f;
+	const float EMPTY_VOLUME = 0.8f;
+	const float TRIGGER_RELEASE_TIME = 0.06f;
+	const float DIVE_TRAIL_INTERVAL = 0.1f;
+	const float DIVE_VOLUME = 0.9f;
+	const float SURFACE_VOLUME = 0.9f;
+	const float DIVE_MOVE_VOLUME = 0.5f;
+	const float DAMAGE_VOLUME = 0.9f;
+	const float RELOAD_FULL_VOLUME = 0.9f;
+	const float SCOPE_VOLUME = 0.6f;
 	const char* const GUN_MODEL_PATH = "Assets/modelData/M4A4.tkm";
 	const Vector3 GUN_OFFSET = { 13.0f, -11.0f, 16.0f };
 	const float GUN_SCALE = 1.0f;
@@ -67,7 +80,6 @@ namespace
 	const float MOVE_THRESHOLD = 0.01f;
 	const int MAX_HP = 100;
 	const float INVINCIBLE_TIME = 0.5f;
-	const int DEBUG_DAMAGE = 20;
 	const float BODY_POINT_MARGIN = 5.0f;
 	const char* const MOUND_MODEL_PATH = "Assets/modelData/SandMound.tkm";
 	const float MOUND_WOBBLE_SPEED = 14.0f;
@@ -76,7 +88,21 @@ namespace
 	const float MOUND_MOVE_STRETCH = 0.2f;
 	const float MOUND_MOVE_BLEND = 6.0f;
 	const float MOUND_SINK = 25.0f;
-	const float MOUND_SCALE = 1.4f;
+	const float MOUND_SCALE = 1.0f;
+	const float MOUND_SWELL = 0.35f;
+	const float MOUND_SWELL_SHAKE = 2.5f;
+	const float SWITCH_CUT = 0.5f;
+	const float GUN_LOWER_RATE = 0.3f;
+	const float DARK_HOLD_START = 0.45f;
+	const float DARK_HOLD_END = 0.55f;
+	const float MOUND_POP_RATE = 0.35f;
+	const float SINK_EYE_HEIGHT = 15.0f;
+	const float SINK_LOOK_DOWN = 0.35f;
+	const float RISE_EYE_HEIGHT = 10.0f;
+	const float TPS_POP_START = 0.45f;
+	const float SWITCH_SHAKE = 3.0f;
+	const float SHAKE_FREQUENCY_X = 61.0f;
+	const float SHAKE_FREQUENCY_Y = 47.0f;
 	const float CAMERA_COLLISION_RADIUS = 15.0f;
 	const float CAMERA_COLLISION_BUFFER = 10.0f;
 	const float CAMERA_MIN_DISTANCE = 20.0f;
@@ -107,6 +133,7 @@ Player::Player()
 
 Player::~Player()
 {
+	SoundList::StopLoop(m_diveMoveSound);
 	if (m_baseViewAngle > 0.0f) {
 		g_camera3D->SetViewAngle(m_baseViewAngle);
 	}
@@ -132,7 +159,7 @@ bool Player::Start()
 	m_gunModel.Init(GUN_MODEL_PATH);
 	m_gunModel.SetShadowCasterFlag(false);
 	m_moundModel.Init(MOUND_MODEL_PATH);
-	m_sandSplash.Init();
+	m_sandSplash.Init(true);
 	m_cameraCollider.Create(CAMERA_COLLISION_RADIUS);
 	m_gunModel.SetScale({ GUN_SCALE, GUN_SCALE, GUN_SCALE });
 	UpdateCamera();
@@ -153,6 +180,8 @@ void Player::Update()
 	UpdateGun();
 	UpdateMound();
 	m_sandSplash.Update(g_gameTime->GetFrameDeltaTime());
+	UpdateDiveMoveSound();
+	UpdateDiveTrail();
 	if (!IsDead()) {
 		UpdateReload();
 		Shoot();
@@ -182,19 +211,20 @@ int Player::GetMaxHp() const
 
 void Player::Damage(int amount)
 {
-	if (IsDead() || IsDiving() || m_invincibleTimer > 0.0f) {
+	if (IsDead() || IsDiving() || IsSwitching() || m_invincibleTimer > 0.0f) {
 		return;
 	}
 	m_hp -= amount;
 	if (m_hp < 0) {
 		m_hp = 0;
 	}
+	SoundList::Play(SoundId::PlayerDamage, DAMAGE_VOLUME);
 	m_invincibleTimer = INVINCIBLE_TIME;
 }
 
 bool Player::HitTest(const Vector3& start, const Vector3& end, float radius) const
 {
-	if (IsDead() || IsDiving()) {
+	if (IsDead() || IsDiving() || IsSwitching()) {
 		return false;
 	}
 	float hitRate = 0.0f;
@@ -212,11 +242,6 @@ void Player::UpdateDamage()
 	if (m_invincibleTimer > 0.0f) {
 		m_invincibleTimer -= g_gameTime->GetFrameDeltaTime();
 	}
-#ifdef _DEBUG
-	if (g_pad[0]->IsTrigger(enButtonSelect)) {
-		Damage(DEBUG_DAMAGE);
-	}
-#endif
 }
 
 void Player::UpdateReload()
@@ -231,10 +256,12 @@ void Player::UpdateReload()
 		while (m_reloadTimer >= RELOAD_INTERVAL && m_ammo < MAX_AMMO) {
 			m_reloadTimer -= RELOAD_INTERVAL;
 			m_ammo++;
+			SoundList::Play(SoundId::PlayerReload, RELOAD_VOLUME);
 		}
 		if (m_ammo >= MAX_AMMO) {
 			m_isReloading = false;
 			m_reloadTimer = 0.0f;
+			SoundList::Play(SoundId::PlayerReloadFull, RELOAD_FULL_VOLUME);
 		}
 		return;
 	}
@@ -249,6 +276,11 @@ void Player::Shoot()
 {
 	if (m_shotCooldown > 0.0f) {
 		m_shotCooldown -= g_gameTime->GetFrameDeltaTime();
+	}
+	bool isTriggerPressed = UpdateShotTrigger();
+	if (!IsDiving() && !IsSwitching() && m_ammo <= 0 && isTriggerPressed) {
+		SoundList::Play(SoundId::PlayerEmpty, EMPTY_VOLUME);
+		return;
 	}
 	if (!CanShoot() || m_shotCooldown > 0.0f) {
 		return;
@@ -279,15 +311,80 @@ void Player::Shoot()
 	if (effect != nullptr) {
 		effect->PlayMuzzleFlash(muzzlePos, shotDir, PLAYER_FLASH_SCALE);
 	}
+	SoundList::Play(SoundId::PlayerShot, SHOT_VOLUME);
 	m_shotCooldown = SHOT_INTERVAL;
 	m_ammo--;
 	m_isShot = true;
 	m_gunKick = 1.0f;
 }
 
+void Player::UpdateDiveTrail()
+{
+	if (!IsDiving() || IsSwitching() || IsDead() || !m_isMoving) {
+		m_diveTrailTimer = 0.0f;
+		return;
+	}
+	m_diveTrailTimer -= g_gameTime->GetFrameDeltaTime();
+	if (m_diveTrailTimer > 0.0f) {
+		return;
+	}
+	m_diveTrailTimer = DIVE_TRAIL_INTERVAL;
+	m_sandSplash.PlayTrail(m_position, m_forward * -1.0f);
+}
+
+bool Player::UpdateShotTrigger()
+{
+	if (g_pad[0]->IsPress(enButtonRB2)) {
+		bool isNewPress = !m_isShotTriggerHeld;
+		m_isShotTriggerHeld = true;
+		m_shotTriggerReleaseTimer = 0.0f;
+		return isNewPress;
+	}
+	m_shotTriggerReleaseTimer += g_gameTime->GetFrameDeltaTime();
+	if (m_shotTriggerReleaseTimer >= TRIGGER_RELEASE_TIME) {
+		m_isShotTriggerHeld = false;
+	}
+	return false;
+}
+
+float Player::GetSwitchProgress() const
+{
+	return IsDiving() ? m_cameraBlend : 1.0f - m_cameraBlend;
+}
+
+float Player::GetSwitchDarkness() const
+{
+	if (!IsSwitching()) {
+		return 0.0f;
+	}
+	float progress = GetSwitchProgress();
+	if (progress < DARK_HOLD_START) {
+		return MathUtil::SmoothStep(progress / DARK_HOLD_START);
+	}
+	if (progress < DARK_HOLD_END) {
+		return 1.0f;
+	}
+	return 1.0f - MathUtil::SmoothStep((progress - DARK_HOLD_END) / (1.0f - DARK_HOLD_END));
+}
+
+void Player::UpdateDiveMoveSound()
+{
+	bool isPlaying = IsDiving() && !IsSwitching() && !IsDead() && m_isMoving;
+	if (isPlaying && m_diveMoveSound == nullptr) {
+		m_diveMoveSound = SoundList::PlayLoop(SoundId::PlayerDiveMove, DIVE_MOVE_VOLUME);
+	}
+	else if (!isPlaying) {
+		SoundList::StopLoop(m_diveMoveSound);
+	}
+}
+
 void Player::UpdateAim()
 {
 	bool isAiming = !IsDiving() && !IsSwitching() && g_pad[0]->IsPress(enButtonLB2);
+	if (isAiming && !m_wasAiming) {
+		SoundList::Play(SoundId::PlayerScope, SCOPE_VOLUME);
+	}
+	m_wasAiming = isAiming;
 	float step = g_gameTime->GetFrameDeltaTime() / ADS_TIME;
 	m_aimBlend = MathUtil::Clamp(m_aimBlend + (isAiming ? step : -step), 0.0f, 1.0f);
 }
@@ -316,6 +413,7 @@ void Player::UpdateState()
 		m_state = enState_Dive;
 		SetDiveBody(true);
 		m_sandSplash.Play(m_position, true);
+		SoundList::Play(SoundId::PlayerDive, DIVE_VOLUME);
 		return;
 	}
 	if (!HasHeadroom()) {
@@ -324,7 +422,8 @@ void Player::UpdateState()
 	}
 	m_state = enState_Surface;
 	SetDiveBody(false);
-	m_sandSplash.Play(m_position, false);
+	m_isSurfaceBurstDone = false;
+	m_isRaiseSoundPending = true;
 }
 
 CharacterController& Player::GetCharaCon()
@@ -498,22 +597,62 @@ void Player::UpdateCamera()
 		}
 	}
 
-	Vector3 lookDir = GetLookDirection();
+	float progress = GetSwitchProgress();
+	bool isDiveSwitch = IsDiving();
+	if (!isDiveSwitch && progress >= SWITCH_CUT && !m_isSurfaceBurstDone) {
+		m_isSurfaceBurstDone = true;
+		m_sandSplash.Play(m_position, false);
+		SoundList::Play(SoundId::PlayerSurface, SURFACE_VOLUME);
+	}
 
-	Vector3 fpsPos = m_position;
-	fpsPos.y += EYE_HEIGHT;
-	Vector3 fpsTarget = fpsPos + lookDir * LOOK_DISTANCE;
-
-	Vector3 tpsTarget = m_position;
-	tpsTarget.y += TPS_TARGET_HEIGHT;
-	Vector3 tpsPos = tpsTarget - m_forward * TPS_DISTANCE + Vector3::Up * TPS_HEIGHT;
-	tpsPos = ResolveCameraCollision(tpsTarget, tpsPos);
-
-	float t = MathUtil::SmoothStep(m_cameraBlend);
+	bool isUnderView = isDiveSwitch ? progress >= SWITCH_CUT : progress < SWITCH_CUT;
 	Vector3 cameraPos;
-	cameraPos.Lerp(t, fpsPos, tpsPos);
 	Vector3 cameraTarget;
-	cameraTarget.Lerp(t, fpsTarget, tpsTarget);
+	float shake = 0.0f;
+	if (isUnderView) {
+		Vector3 tpsTarget = m_position;
+		tpsTarget.y += TPS_TARGET_HEIGHT;
+		Vector3 tpsPos = tpsTarget - m_forward * TPS_DISTANCE + Vector3::Up * TPS_HEIGHT;
+		if (isDiveSwitch && IsSwitching()) {
+			float rate = (progress - SWITCH_CUT) / (1.0f - SWITCH_CUT);
+			float pull = TPS_POP_START + (1.0f - TPS_POP_START) * (1.0f - (1.0f - rate) * (1.0f - rate));
+			tpsPos = tpsTarget + (tpsPos - tpsTarget) * pull;
+			shake = SWITCH_SHAKE * (1.0f - rate);
+		}
+		else if (!isDiveSwitch) {
+			float rate = progress / SWITCH_CUT;
+			shake = SWITCH_SHAKE * rate;
+		}
+		cameraPos = ResolveCameraCollision(tpsTarget, tpsPos);
+		cameraTarget = tpsTarget;
+	}
+	else {
+		Vector3 lookDir = GetLookDirection();
+		float eyeHeight = EYE_HEIGHT;
+		if (isDiveSwitch) {
+			float rate = progress / SWITCH_CUT;
+			eyeHeight = EYE_HEIGHT + (SINK_EYE_HEIGHT - EYE_HEIGHT) * rate * rate;
+			lookDir.y -= SINK_LOOK_DOWN * rate;
+			shake = SWITCH_SHAKE * rate;
+		}
+		else if (IsSwitching()) {
+			float rate = (progress - SWITCH_CUT) / (1.0f - SWITCH_CUT);
+			eyeHeight = RISE_EYE_HEIGHT + (EYE_HEIGHT - RISE_EYE_HEIGHT) * MathUtil::EaseOutBack(rate);
+			shake = SWITCH_SHAKE * (1.0f - rate);
+		}
+		cameraPos = m_position;
+		cameraPos.y += eyeHeight;
+		m_eyeHeight = eyeHeight;
+		cameraTarget = cameraPos + lookDir * LOOK_DISTANCE;
+	}
+
+	if (shake > 0.0f) {
+		m_shakeTime += deltaTime;
+		Vector3 right = Cross(Vector3::Up, m_forward);
+		Vector3 offset = right * sinf(m_shakeTime * SHAKE_FREQUENCY_X) + Vector3::Up * sinf(m_shakeTime * SHAKE_FREQUENCY_Y + 1.3f);
+		cameraPos += offset * shake;
+		cameraTarget += offset * shake * 0.5f;
+	}
 
 	g_camera3D->SetPosition(cameraPos);
 	g_camera3D->SetTarget(cameraTarget);
@@ -563,8 +702,9 @@ void Player::UpdateGun()
 	m_lastPitch = m_pitch;
 
 	float aimRate = GetAimRate();
-	m_isGunVisible = !IsDiving() && !IsSwitching() && aimRate < ADS_GUN_HIDE_RATE;
-	if (IsDiving() || IsSwitching()) {
+	bool isLowering = IsDiving() && IsSwitching() && GetSwitchProgress() < GUN_LOWER_RATE;
+	m_isGunVisible = ((!IsDiving() && !IsSwitching()) || isLowering) && aimRate < ADS_GUN_HIDE_RATE;
+	if (!isLowering && (IsDiving() || IsSwitching())) {
 		m_gunRaise = 0.0f;
 		m_gunKick = 0.0f;
 		return;
@@ -574,7 +714,16 @@ void Player::UpdateGun()
 	m_gunSwayYaw = MathUtil::Clamp(m_gunSwayYaw * decay - yawDelta * GUN_SWAY_AMOUNT, -GUN_SWAY_LIMIT, GUN_SWAY_LIMIT);
 	m_gunSwayPitch = MathUtil::Clamp(m_gunSwayPitch * decay - pitchDelta * GUN_SWAY_AMOUNT, -GUN_SWAY_LIMIT, GUN_SWAY_LIMIT);
 	m_gunKick *= expf(-GUN_KICK_DECAY * deltaTime);
-	m_gunRaise = MathUtil::Clamp(m_gunRaise + GUN_RAISE_SPEED * deltaTime, 0.0f, 1.0f);
+	if (isLowering) {
+		m_gunRaise = fminf(m_gunRaise, 1.0f - GetSwitchProgress() / GUN_LOWER_RATE);
+	}
+	else {
+		if (m_isRaiseSoundPending) {
+			m_isRaiseSoundPending = false;
+			SoundList::Play(SoundId::PlayerGunRaise, GUN_RAISE_VOLUME);
+		}
+		m_gunRaise = MathUtil::Clamp(m_gunRaise + GUN_RAISE_SPEED * deltaTime, 0.0f, 1.0f);
+	}
 
 	float bobTarget = m_isMoving ? 1.0f : 0.0f;
 	m_gunBobWeight += (bobTarget - m_gunBobWeight) * MathUtil::Clamp(GUN_BOB_BLEND * deltaTime, 0.0f, 1.0f);
@@ -610,7 +759,7 @@ void Player::UpdateGun()
 	offset.z -= kick * GUN_KICK_BACK;
 
 	Vector3 gunPos = m_position;
-	gunPos.y += EYE_HEIGHT;
+	gunPos.y += m_eyeHeight;
 	gunPos += right * offset.x + up * offset.y + forward * offset.z;
 
 	Quaternion localRot;
@@ -632,7 +781,9 @@ void Player::UpdateGun()
 void Player::UpdateMound()
 {
 	float deltaTime = g_gameTime->GetFrameDeltaTime();
-	m_isMoundVisible = m_cameraBlend > 0.0f;
+	float progress = GetSwitchProgress();
+	bool isDiveSwitch = IsDiving();
+	m_isMoundVisible = isDiveSwitch ? progress >= SWITCH_CUT : progress < SWITCH_CUT;
 	if (!m_isMoundVisible) {
 		m_moundMoveWeight = 0.0f;
 		return;
@@ -640,16 +791,24 @@ void Player::UpdateMound()
 
 	float moveTarget = m_isMoving && IsDiving() ? 1.0f : 0.0f;
 	m_moundMoveWeight += (moveTarget - m_moundMoveWeight) * MathUtil::Clamp(MOUND_MOVE_BLEND * deltaTime, 0.0f, 1.0f);
-	m_moundPhase += MOUND_WOBBLE_SPEED * deltaTime * (0.3f + m_moundMoveWeight);
+	float swell = 0.0f;
+	float riseRate = 1.0f;
+	if (isDiveSwitch) {
+		riseRate = MathUtil::EaseOutBack(MathUtil::Clamp01((progress - SWITCH_CUT) / MOUND_POP_RATE));
+	}
+	else if (IsSwitching()) {
+		swell = progress / SWITCH_CUT;
+	}
+	m_moundPhase += MOUND_WOBBLE_SPEED * deltaTime * (0.3f + m_moundMoveWeight + swell * MOUND_SWELL_SHAKE);
 
-	float rise = MathUtil::SmoothStep(m_cameraBlend) * MOUND_SCALE;
-	float wobble = sinf(m_moundPhase);
+	float rise = riseRate * MOUND_SCALE * (1.0f + swell * MOUND_SWELL);
+	float wobble = sinf(m_moundPhase) * (1.0f + swell * MOUND_SWELL_SHAKE);
 	float width = rise * (1.0f + wobble * MOUND_WOBBLE_WIDTH);
 	float height = rise * (1.0f - wobble * MOUND_WOBBLE_HEIGHT * (0.4f + m_moundMoveWeight));
 	float length = rise * (1.0f + m_moundMoveWeight * MOUND_MOVE_STRETCH);
 
 	Vector3 position = m_position;
-	position.y -= (1.0f - rise / MOUND_SCALE) * MOUND_SINK;
+	position.y -= (1.0f - MathUtil::Clamp01(riseRate)) * MOUND_SINK;
 	Quaternion rotation;
 	rotation.SetRotationDegY(m_yaw);
 

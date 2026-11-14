@@ -13,9 +13,9 @@ public:
 	{
 		return m_playerStartPosition;
 	}
-	const Vector3& GetHolePosition() const
+	const Vector3& GetExitPosition() const
 	{
-		return m_holePosition;
+		return m_exitPosition;
 	}
 
 private:
@@ -26,7 +26,15 @@ private:
 		ModelRender rope;
 	};
 
+	struct Sandbag
+	{
+		ModelRender model;
+		std::vector<std::unique_ptr<BoxCollider>> colliders;
+		std::vector<std::unique_ptr<RigidBody>> rigidBodies;
+	};
+
 	void AddLantern(const Vector3& position);
+	void AddSandbag(const LevelObjectData& objData);
 	void InitBarrier(const Vector3& position);
 	void InitSky();
 	void InitOutdoorModel(const LevelObjectData& objData);
@@ -35,7 +43,6 @@ private:
 	void ResetLighting();
 
 	LevelRender m_levelRender;
-	ModelRender m_holeModel;
 	ModelRender m_skyModel;
 	ModelRender m_outdoorModel;
 	Texture m_skyTexture;
@@ -44,10 +51,11 @@ private:
 	float m_outdoorStartX = 0.0f;
 	std::vector<std::unique_ptr<PointLight>> m_pointLights;
 	std::vector<std::unique_ptr<Lantern>> m_lanterns;
+	std::vector<std::unique_ptr<Sandbag>> m_sandbags;
 	std::vector<Vector3> m_lampPositions;
 	float m_lanternEmission = 1.0f;
 	BoxCollider m_barrierCollider;
 	RigidBody m_barrierRigidBody;
 	Vector3 m_playerStartPosition = Vector3::Zero;
-	Vector3 m_holePosition = Vector3::Zero;
+	Vector3 m_exitPosition = Vector3::Zero;
 };

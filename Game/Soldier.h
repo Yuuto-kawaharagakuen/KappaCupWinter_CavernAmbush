@@ -68,6 +68,7 @@ private:
 	void Shoot();
 	void UpdateMark(float deltaTime);
 	void UpdateAnimation();
+	void UpdateFootstep(bool isWalking, float animationSpeed);
 	Vector3 GetEyePosition() const;
 	Vector3 GetPlayerAimPosition() const;
 
@@ -98,6 +99,7 @@ private:
 	float m_attackTimer = 0.0f;
 	Vector3 m_attackMoveTarget = Vector3::Zero;
 	float m_strafeSide = 1.0f;
+	float m_stepTimer = 0.0f;
 
 	FontRender m_mark;
 	float m_markTimer = 0.0f;

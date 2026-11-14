@@ -70,7 +70,7 @@ bool EffectManager::Start()
 		flash.light->SetPosition({ 0.0f, HIDDEN_Y, 0.0f });
 		flash.light->Update();
 	}
-	m_impactSand.Init();
+	m_impactSand.Init(false);
 	return true;
 }
 

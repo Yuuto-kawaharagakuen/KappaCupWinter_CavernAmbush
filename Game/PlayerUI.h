@@ -23,6 +23,32 @@ private:
 	static const int RELOAD_SEGMENT_NUM = 10;
 	static const int CROSS_LINE_NUM = 4;
 	static const int DAMAGE_POPUP_NUM = 16;
+	static const int GUIDE_ROW_NUM = 3;
+
+	enum EnGuideButton
+	{
+		enGuideButton_B,
+		enGuideButton_X,
+		enGuideButton_LT,
+		enGuideButton_RT,
+		enGuideButton_Num,
+	};
+
+	struct GuideRow
+	{
+		SpriteRender icons[enGuideButton_Num];
+		FontRender label;
+		EnGuideButton button = enGuideButton_B;
+		bool isVisible = false;
+		bool isDim = false;
+	};
+
+	struct GuideEntry
+	{
+		EnGuideButton button;
+		const wchar_t* text;
+		bool isDim;
+	};
 
 	struct DamagePopup
 	{
@@ -40,6 +66,8 @@ private:
 	void InitCrosshair();
 	void InitStatus();
 	void InitReload();
+	void InitGuide();
+	void UpdateGuide(float deltaTime);
 	void UpdateHp(float deltaTime);
 	void UpdateAmmo(float deltaTime);
 	void UpdateCrosshair(float deltaTime);
@@ -47,6 +75,7 @@ private:
 	void UpdateReload(float deltaTime);
 	void UpdateDamagePopups(float deltaTime);
 	void UpdateVignette(float deltaTime);
+	void UpdateSwitchFade();
 	void UpdateScope();
 	void UpdateMessage(float deltaTime);
 
@@ -56,6 +85,8 @@ private:
 	float m_messageTimer = 0.0f;
 
 	SpriteRender m_vignette;
+	SpriteRender m_switchFade;
+	bool m_isSwitchFadeVisible = false;
 	SpriteRender m_scope;
 	float m_scopeAlpha = 0.0f;
 	float m_damageFlash = 0.0f;
@@ -106,4 +137,7 @@ private:
 	int m_lastReloadAmmo = -1;
 
 	DamagePopup m_damagePopups[DAMAGE_POPUP_NUM];
+
+	GuideRow m_guideRows[GUIDE_ROW_NUM];
+	float m_guideAlpha = 0.0f;
 };

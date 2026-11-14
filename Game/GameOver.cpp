@@ -4,6 +4,7 @@
 #include "GameFlow.h"
 #include "Title.h"
 #include "Fade.h"
+#include "SoundList.h"
 #include "ObjectNames.h"
 
 namespace
@@ -89,6 +90,7 @@ void GameOver::Update()
 	if (g_pad[0]->IsTrigger(enButtonA)) {
 		m_isDecided = true;
 		m_fade->StartFadeOut();
+		SoundList::Play(SoundId::MenuDecide, SoundList::MENU_VOLUME);
 	}
 }
 
@@ -115,6 +117,7 @@ void GameOver::UpdateSelect()
 		return;
 	}
 	m_select = (m_select + move + enMenu_Num) % enMenu_Num;
+	SoundList::Play(SoundId::MenuCursor, SoundList::MENU_VOLUME);
 	UpdateMenuText();
 }
 

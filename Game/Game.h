@@ -25,8 +25,7 @@ public:
 private:
 	void UpdateGameOver();
 	void UpdateStageClear();
-	void UpdateHole();
-	int CountAliveEnemies() const;
+	void UpdateExit();
 
 	Player* m_player = nullptr;
 	Stage* m_stage = nullptr;
@@ -37,6 +36,5 @@ private:
 	bool m_isGameOver = false;
 	float m_gameOverTimer = 0.0f;
 	float m_clearTime = 0.0f;
-	bool m_isHoleOpen = false;
 	bool m_isStageClear = false;
 };

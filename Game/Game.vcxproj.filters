@@ -48,6 +48,7 @@
     <ClInclude Include="HitUtil.h" />
     <ClInclude Include="MathUtil.h" />
     <ClInclude Include="ObjectNames.h" />
+    <ClInclude Include="SoundList.h" />
     <ClInclude Include="Soldier.h" />
     <ClInclude Include="PlayerUI.h" />
   </ItemGroup>

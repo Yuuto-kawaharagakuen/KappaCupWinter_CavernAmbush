@@ -2,15 +2,19 @@
 #include "EnemyBullet.h"
 #include "Player.h"
 #include "EffectManager.h"
+#include "SoundList.h"
 #include "ObjectNames.h"
 
 namespace
 {
-	const char* const MODEL_PATH = "Assets/modelData/SandBullet.tkm";
+	const char* const MODEL_PATH = "Assets/modelData/EnemyBullet.tkm";
 	const float BULLET_SPEED = 1800.0f;
 	const float BULLET_RANGE = 3000.0f;
 	const float BULLET_RADIUS = 8.0f;
-	const float BULLET_SCALE = 0.7f;
+	const float BULLET_SCALE = 1.0f;
+	const float OPPOSITE_DOT = -0.999f;
+	const float RICOCHET_VOLUME = 0.7f;
+	const float RICOCHET_RANGE = 700.0f;
 }
 
 EnemyBullet::EnemyBullet()
@@ -35,6 +39,14 @@ bool EnemyBullet::Start()
 	m_model.Init(MODEL_PATH);
 	m_model.SetShadowCasterFlag(false);
 	m_model.SetScale({ BULLET_SCALE, BULLET_SCALE, BULLET_SCALE });
+	Quaternion rotation;
+	if (m_direction.Dot(Vector3::AxisZ) < OPPOSITE_DOT) {
+		rotation.SetRotationDegY(180.0f);
+	}
+	else {
+		rotation.SetRotation(Vector3::AxisZ, m_direction);
+	}
+	m_model.SetRotation(rotation);
 	m_model.SetPosition(m_position);
 	m_model.Update();
 	return true;
@@ -43,6 +55,9 @@ bool EnemyBullet::Start()
 void EnemyBullet::Update()
 {
 	if (m_isDead) {
+		return;
+	}
+	if (m_player != nullptr && m_player->IsWorldPaused()) {
 		return;
 	}
 
@@ -73,6 +88,7 @@ void EnemyBullet::Update()
 		if (effect != nullptr) {
 			effect->PlayEnemyBulletImpact(hitPos, m_direction);
 		}
+		SoundList::PlayAt(SoundId::BulletRicochet, RICOCHET_VOLUME, hitPos, RICOCHET_RANGE);
 	}
 	if (m_traveled >= BULLET_RANGE || isWallHit) {
 		m_isDead = true;

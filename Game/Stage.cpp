@@ -25,16 +25,47 @@ namespace
 	const float LANTERN_ROPE_MODEL_LENGTH = 100.0f;
 	const float LANTERN_ROPE_DEFAULT_LENGTH = 200.0f;
 	const float LANTERN_CEILING_RAY_LENGTH = 1200.0f;
-	const char* const HOLE_MODEL_PATH = "Assets/modelData/StageHole.tkm";
-	const float HOLE_RAY_TOP = 280.0f;
-	const float HOLE_RAY_BOTTOM = -600.0f;
-	const float HOLE_FLOOR_OFFSET = 8.0f;
 	const Vector3 BARRIER_SIZE = { 40.0f, 1200.0f, 1200.0f };
 	const char* const SKY_MODEL_PATH = "Assets/modelData/preset/sky.tkm";
 	const char* const SKY_SHADER_PATH = "Assets/shader/SkyCubeMap.fx";
 	const wchar_t* const SKY_TEXTURE_PATH = L"Assets/modelData/preset/skyCubeMapWild.dds";
 	const float SKY_SCALE = 1800.0f;
 	const float SKY_LUMINANCE = 1.0f;
+
+	struct SandbagSegment
+	{
+		float ax;
+		float ay;
+		float bx;
+		float by;
+	};
+	struct SandbagShape
+	{
+		const wchar_t* name;
+		float height;
+		float thickness;
+		const SandbagSegment* segments;
+		int segmentCount;
+	};
+	const SandbagSegment SANDBAG_STRAIGHT_SEGMENTS[] = {
+		{ -160.0f, 0.0f, 160.0f, 0.0f },
+	};
+	const SandbagSegment SANDBAG_ROUND_SEGMENTS[] = {
+		{ -181.6f, 48.1f, -100.2f, -14.4f },
+		{ -100.2f, -14.4f, 0.0f, -36.6f },
+		{ 0.0f, -36.6f, 100.2f, -14.4f },
+		{ 100.2f, -14.4f, 181.6f, 48.1f },
+	};
+	const SandbagSegment SANDBAG_CORNER_SEGMENTS[] = {
+		{ -115.0f, 0.0f, -5.0f, 100.0f },
+		{ 6.0f, 95.0f, 115.0f, -115.0f },
+	};
+	const SandbagShape SANDBAG_SHAPES[] = {
+		{ L"Prop_SandbagStraight", 80.0f, 55.0f, SANDBAG_STRAIGHT_SEGMENTS, 1 },
+		{ L"Prop_SandbagRound", 80.0f, 55.0f, SANDBAG_ROUND_SEGMENTS, 4 },
+		{ L"Prop_SandbagCorner", 86.0f, 60.0f, SANDBAG_CORNER_SEGMENTS, 2 },
+	};
+	const float SANDBAG_JOINT_OVERLAP = 0.5f;
 }
 
 Stage::Stage()
@@ -43,6 +74,9 @@ Stage::Stage()
 
 Stage::~Stage()
 {
+	if (g_renderingEngine != nullptr) {
+		g_renderingEngine->DisableDof();
+	}
 }
 
 void Stage::Load(const char* levelFilePath)
@@ -52,8 +86,8 @@ void Stage::Load(const char* levelFilePath)
 			m_playerStartPosition = objData.position;
 			return true;
 		}
-		if (objData.ForwardMatchName(L"Hole_")) {
-			m_holePosition = objData.position;
+		if (objData.EqualObjectName(L"StageExit")) {
+			m_exitPosition = objData.position;
 			return true;
 		}
 		if (objData.EqualObjectName(L"EntranceBarrier")) {
@@ -62,6 +96,10 @@ void Stage::Load(const char* levelFilePath)
 		}
 		if (objData.ForwardMatchName(L"Desert_")) {
 			InitOutdoorModel(objData);
+			return true;
+		}
+		if (objData.ForwardMatchName(L"Prop_Sandbag")) {
+			AddSandbag(objData);
 			return true;
 		}
 		if (objData.ForwardMatchName(L"Light_")) {
@@ -76,25 +114,12 @@ void Stage::Load(const char* levelFilePath)
 		AddLantern(lampPosition);
 	}
 
-	Vector3 rayStart = { m_holePosition.x, HOLE_RAY_TOP, m_holePosition.z };
-	Vector3 rayEnd = { m_holePosition.x, HOLE_RAY_BOTTOM, m_holePosition.z };
-	Vector3 hitPosition;
-	if (PhysicsWorld::GetInstance()->RayTest(rayStart, rayEnd, hitPosition)) {
-		m_holePosition.y = hitPosition.y;
-	}
-
-	Vector3 holeModelPosition = m_holePosition;
-	holeModelPosition.y += HOLE_FLOOR_OFFSET;
-	m_holeModel.SetRaytracingWorld(false);
-	m_holeModel.Init(HOLE_MODEL_PATH);
-	m_holeModel.SetShadowCasterFlag(false);
-	m_holeModel.SetPosition(holeModelPosition);
-	m_holeModel.Update();
 }
 
 void Stage::InitLighting()
 {
 	g_renderingEngine->SetAmbient(CAVE_AMBIENT);
+	g_renderingEngine->EnableDof();
 	if (!m_hasOutdoorModel) {
 		ResetLighting();
 		return;
@@ -182,6 +207,55 @@ void Stage::AddLantern(const Vector3& position)
 	m_lanterns.push_back(std::move(lantern));
 }
 
+void Stage::AddSandbag(const LevelObjectData& objData)
+{
+	const SandbagShape* shape = nullptr;
+	for (const SandbagShape& candidate : SANDBAG_SHAPES) {
+		if (wcscmp(objData.name, candidate.name) == 0) {
+			shape = &candidate;
+			break;
+		}
+	}
+	auto sandbag = std::make_unique<Sandbag>();
+	char modelPath[256];
+	sprintf_s(modelPath, "Assets/modelData/%ls.tkm", objData.name);
+	sandbag->model.Init(modelPath);
+	sandbag->model.SetTRS(objData.position, objData.rotation, objData.scale);
+	sandbag->model.Update();
+
+	if (shape != nullptr) {
+		float height = shape->height * objData.scale.y;
+		for (int i = 0; i < shape->segmentCount; i++) {
+			const SandbagSegment& segment = shape->segments[i];
+			Vector3 a = { segment.ax * objData.scale.x, 0.0f, -segment.ay * objData.scale.z };
+			Vector3 b = { segment.bx * objData.scale.x, 0.0f, -segment.by * objData.scale.z };
+			Vector3 direction = b - a;
+			float length = direction.Length() + shape->thickness * SANDBAG_JOINT_OVERLAP;
+			Quaternion rotation;
+			rotation.SetRotation(Vector3::AxisY, atan2f(-direction.z, direction.x));
+			rotation.Multiply(objData.rotation);
+
+			Vector3 center = (a + b) * 0.5f;
+			center.y = height * 0.5f;
+			objData.rotation.Apply(center);
+			center += objData.position;
+
+			auto collider = std::make_unique<BoxCollider>();
+			collider->Create({ length, height, shape->thickness * objData.scale.x });
+			RigidBodyInitData initData;
+			initData.collider = collider.get();
+			initData.mass = 0.0f;
+			initData.pos = center;
+			initData.rot = rotation;
+			auto rigidBody = std::make_unique<RigidBody>();
+			rigidBody->Init(initData);
+			sandbag->colliders.push_back(std::move(collider));
+			sandbag->rigidBodies.push_back(std::move(rigidBody));
+		}
+	}
+	m_sandbags.push_back(std::move(sandbag));
+}
+
 void Stage::InitBarrier(const Vector3& position)
 {
 	m_outdoorStartX = position.x;
@@ -226,7 +300,9 @@ void Stage::Update()
 void Stage::Render(RenderContext& rc)
 {
 	m_levelRender.Draw(rc);
-	m_holeModel.Draw(rc);
+	for (auto& sandbag : m_sandbags) {
+		sandbag->model.Draw(rc);
+	}
 	for (auto& lantern : m_lanterns) {
 		lantern->frame.Draw(rc);
 		lantern->glass.Draw(rc);

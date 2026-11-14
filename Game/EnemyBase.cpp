@@ -1,6 +1,9 @@
 ﻿#include "stdafx.h"
 #include "EnemyBase.h"
 #include "HitUtil.h"
+#include "SoundList.h"
+#include "Player.h"
+#include "ObjectNames.h"
 
 namespace
 {
@@ -11,6 +14,9 @@ namespace
 	const float DEATH_SINK_TIME = 0.8f;
 	const float DEATH_SINK_DEPTH = 120.0f;
 	const float DEATH_LIE_TIME = 1.0f;
+	const float HIT_VOLUME = 0.8f;
+	const float DOWN_VOLUME = 1.0f;
+	const float DOWN_SOUND_RANGE = 3000.0f;
 }
 
 EnemyBase::EnemyBase()
@@ -35,6 +41,7 @@ void EnemyBase::InitBase(const char* modelPath, int maxHp, float radius, float h
 
 bool EnemyBase::Start()
 {
+	m_worldPlayer = FindGO<Player>(ObjectName::PLAYER);
 	OnStart();
 	UpdateModel();
 	return true;
@@ -43,6 +50,9 @@ bool EnemyBase::Start()
 void EnemyBase::Update()
 {
 	if (!m_isInitialized) {
+		return;
+	}
+	if (m_worldPlayer != nullptr && m_worldPlayer->IsWorldPaused()) {
 		return;
 	}
 
@@ -85,8 +95,10 @@ bool EnemyBase::Damage(int amount, const Vector3& direction)
 	}
 
 	m_hp -= amount;
+	SoundList::Play(SoundId::EnemyHit, HIT_VOLUME);
 	if (m_hp <= 0) {
 		m_hp = 0;
+		SoundList::PlayAt(SoundId::EnemyDown, DOWN_VOLUME, m_position, DOWN_SOUND_RANGE);
 		m_deathTimer = 0.0f;
 		m_charaCon.RemoveRigidBoby();
 		OnDead();

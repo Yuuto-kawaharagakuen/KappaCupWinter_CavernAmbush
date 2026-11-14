@@ -23,6 +23,13 @@ namespace MathUtil
 		return t * t * (3.0f - 2.0f * t);
 	}
 
+	inline float EaseOutBack(float t)
+	{
+		const float overshoot = 1.70158f;
+		float u = t - 1.0f;
+		return 1.0f + (overshoot + 1.0f) * u * u * u + overshoot * u * u;
+	}
+
 	inline float Damp(float current, float target, float speed, float deltaTime)
 	{
 		return target + (current - target) * expf(-speed * deltaTime);

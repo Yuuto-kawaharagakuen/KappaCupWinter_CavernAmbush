@@ -42,6 +42,20 @@ namespace
 	const float SHRINK_TIME = 0.35f;
 	const float SPIN_SPEED_MAX = 720.0f;
 	const float HIDDEN_Y = -100000.0f;
+	const char* const DUST_MODEL_PATH = "Assets/modelData/SandDust.tkm";
+	const char* const DUST_SHADER_PATH = "Assets/shader/SandDust.fx";
+	const int SURFACE_DUST_COUNT = 32;
+	const int TRAIL_DUST_COUNT = 4;
+	const float TRAIL_BUMP_BACK = 45.0f;
+	const float TRAIL_BUMP_SIDE = 15.0f;
+	const float TRAIL_BUMP_SIZE_MIN = 0.25f;
+	const float TRAIL_BUMP_SIZE_MAX = 0.35f;
+	const float DUST_DRAG = 1.6f;
+	const float DUST_BUOYANCY = 12.0f;
+	const float DUST_FADE_IN_TIME = 0.15f;
+	const Vector3 DUST_COLOR = { 0.42f, 0.38f, 0.32f };
+	const float DUST_ROLL_SPEED_MAX = 40.0f;
+	const float OPPOSITE_DOT = -0.999f;
 
 	float RandomRange(float minValue, float maxValue)
 	{
@@ -61,8 +75,34 @@ namespace
 	}
 }
 
-void SandSplash::Init()
+const SandSplash::DustParam SandSplash::SURFACE_DUST = {
+	90.0f, 5.0f, 45.0f, 25.0f, 110.0f, 35.0f, 130.0f, 1.2f, 2.2f, 2.2f, 1.1f, 2.0f, 0.35f, 0.55f
+};
+
+const SandSplash::DustParam SandSplash::TRAIL_DUST = {
+	25.0f, 0.0f, 15.0f, 10.0f, 40.0f, 20.0f, 60.0f, 0.8f, 1.3f, 1.9f, 0.7f, 1.1f, 0.0f, 0.35f
+};
+
+void SandSplash::Init(bool hasDust)
 {
+	m_hasDust = hasDust;
+	if (m_hasDust) {
+		for (auto& dust : m_dusts) {
+			ModelInitData initData;
+			initData.m_tkmFilePath = DUST_MODEL_PATH;
+			initData.m_fxFilePath = DUST_SHADER_PATH;
+			initData.m_vsEntryPointFunc = "VSMain";
+			initData.m_psEntryPointFunc = "PSMain";
+			initData.m_expandConstantBuffer = &dust.color;
+			initData.m_expandConstantBufferSize = sizeof(dust.color);
+			initData.m_alphaBlendMode = AlphaBlendMode_Trans;
+			initData.m_isDepthWrite = false;
+			initData.m_cullMode = D3D12_CULL_MODE_NONE;
+			dust.model.InitForwardRendering(initData);
+			dust.model.SetShadowCasterFlag(false);
+			HideModel(dust.model);
+		}
+	}
 	for (auto& particle : m_particles) {
 		particle.model.Init(GRAIN_MODEL_PATH);
 		particle.model.SetShadowCasterFlag(false);
@@ -84,8 +124,101 @@ void SandSplash::Play(const Vector3& position, bool isDive)
 		return;
 	}
 	for (int i = 0; i < SURFACE_BUMP_COUNT; i++) {
-		SpawnBump(position);
+		Vector3 bumpPosition = position + RandomSide() * RandomRange(BUMP_RADIUS_MIN, BUMP_RADIUS_MAX);
+		bumpPosition.y = position.y;
+		Bump& bump = SpawnBump(bumpPosition, RandomRange(BUMP_SIZE_MIN, BUMP_SIZE_MAX), RandomRange(0.0f, BUMP_DELAY_MAX));
+		SpawnBumpGrains(bump.position, bump.delay + BUMP_GRAIN_DELAY);
 	}
+	if (m_hasDust) {
+		for (int i = 0; i < SURFACE_DUST_COUNT; i++) {
+			SpawnDust(position, SURFACE_DUST);
+		}
+	}
+}
+
+void SandSplash::PlayTrail(const Vector3& position, const Vector3& backward)
+{
+	Vector3 side = Cross(Vector3::Up, backward);
+	Vector3 bumpPosition = position + backward * TRAIL_BUMP_BACK + side * RandomRange(-TRAIL_BUMP_SIDE, TRAIL_BUMP_SIDE);
+	bumpPosition.y = position.y;
+	SpawnBump(bumpPosition, RandomRange(TRAIL_BUMP_SIZE_MIN, TRAIL_BUMP_SIZE_MAX), 0.0f);
+	if (!m_hasDust) {
+		return;
+	}
+	for (int i = 0; i < TRAIL_DUST_COUNT; i++) {
+		SpawnDust(position + backward * TRAIL_BUMP_BACK, TRAIL_DUST);
+	}
+}
+
+void SandSplash::SpawnDust(const Vector3& origin, const DustParam& param)
+{
+	Dust& dust = m_dusts[m_nextDust];
+	m_nextDust = (m_nextDust + 1) % DUST_COUNT;
+
+	Vector3 side = RandomSide();
+	dust.position = origin + side * RandomRange(0.0f, param.radius);
+	dust.position.y += RandomRange(param.heightMin, param.heightMax);
+	dust.velocity = side * RandomRange(param.sideSpeedMin, param.sideSpeedMax);
+	dust.velocity.y = RandomRange(param.upSpeedMin, param.upSpeedMax);
+	dust.roll = RandomRange(0.0f, 360.0f);
+	dust.rollSpeed = RandomRange(-DUST_ROLL_SPEED_MAX, DUST_ROLL_SPEED_MAX);
+	dust.sizeStart = RandomRange(param.sizeMin, param.sizeMax);
+	dust.sizeEnd = dust.sizeStart * param.growth;
+	dust.alpha = param.alpha;
+	dust.delay = RandomRange(0.0f, param.delayMax);
+	dust.time = 0.0f;
+	dust.life = RandomRange(param.lifeMin, param.lifeMax);
+	dust.isActive = true;
+	dust.color = { DUST_COLOR.x, DUST_COLOR.y, DUST_COLOR.z, 0.0f };
+	HideModel(dust.model);
+}
+
+void SandSplash::UpdateDust(Dust& dust, float deltaTime)
+{
+	if (!dust.isActive) {
+		return;
+	}
+	if (dust.delay > 0.0f) {
+		dust.delay -= deltaTime;
+		return;
+	}
+	dust.time += deltaTime;
+	float rate = dust.time / dust.life;
+	if (rate >= 1.0f) {
+		dust.isActive = false;
+		HideModel(dust.model);
+		return;
+	}
+
+	float drag = 1.0f - DUST_DRAG * deltaTime;
+	dust.velocity.x *= drag;
+	dust.velocity.z *= drag;
+	dust.velocity.y = dust.velocity.y * drag + DUST_BUOYANCY * deltaTime;
+	dust.position += dust.velocity * deltaTime;
+	dust.roll += dust.rollSpeed * deltaTime;
+
+	float fadeIn = dust.time < DUST_FADE_IN_TIME ? dust.time / DUST_FADE_IN_TIME : 1.0f;
+	float fadeOut = 1.0f - rate;
+	dust.color.w = dust.alpha * fadeIn * fadeOut * fadeOut;
+
+	Vector3 toCamera = g_camera3D->GetPosition() - dust.position;
+	toCamera.Normalize();
+	Quaternion face;
+	if (toCamera.Dot(Vector3::AxisZ) < OPPOSITE_DOT) {
+		face.SetRotationDegY(180.0f);
+	}
+	else {
+		face.SetRotation(Vector3::AxisZ, toCamera);
+	}
+	Quaternion rotation;
+	rotation.SetRotationDeg(Vector3::AxisZ, dust.roll);
+	rotation.Multiply(face);
+
+	float scale = dust.sizeStart + (dust.sizeEnd - dust.sizeStart) * sqrtf(rate);
+	dust.model.SetPosition(dust.position);
+	dust.model.SetRotation(rotation);
+	dust.model.SetScale({ scale, scale, scale });
+	dust.model.Update();
 }
 
 void SandSplash::PlayImpact(const Vector3& position, const Vector3& direction, int count, float sizeRate, float groundY)
@@ -138,21 +271,19 @@ void SandSplash::SpawnDiveGrain(const Vector3& origin)
 	ResetParticle(NextParticle(), position, velocity, origin.y, 0.0f, 1.0f);
 }
 
-void SandSplash::SpawnBump(const Vector3& origin)
+SandSplash::Bump& SandSplash::SpawnBump(const Vector3& position, float size, float delay)
 {
 	Bump& bump = m_bumps[m_nextBump];
 	m_nextBump = (m_nextBump + 1) % BUMP_COUNT;
 
-	bump.position = origin + RandomSide() * RandomRange(BUMP_RADIUS_MIN, BUMP_RADIUS_MAX);
-	bump.position.y = origin.y;
+	bump.position = position;
 	bump.rotation.SetRotationDegY(RandomRange(0.0f, 360.0f));
-	bump.size = RandomRange(BUMP_SIZE_MIN, BUMP_SIZE_MAX);
-	bump.delay = RandomRange(0.0f, BUMP_DELAY_MAX);
+	bump.size = size;
+	bump.delay = delay;
 	bump.time = 0.0f;
 	bump.isActive = true;
 	HideModel(bump.model);
-
-	SpawnBumpGrains(bump.position, bump.delay + BUMP_GRAIN_DELAY);
+	return bump;
 }
 
 void SandSplash::SpawnBumpGrains(const Vector3& center, float delay)
@@ -174,6 +305,11 @@ void SandSplash::Update(float deltaTime)
 	}
 	for (auto& bump : m_bumps) {
 		UpdateBump(bump, deltaTime);
+	}
+	if (m_hasDust) {
+		for (auto& dust : m_dusts) {
+			UpdateDust(dust, deltaTime);
+		}
 	}
 }
 
@@ -253,6 +389,13 @@ void SandSplash::Draw(RenderContext& rc)
 	for (auto& bump : m_bumps) {
 		if (bump.isActive && bump.delay <= 0.0f) {
 			bump.model.Draw(rc);
+		}
+	}
+	if (m_hasDust) {
+		for (auto& dust : m_dusts) {
+			if (dust.isActive && dust.delay <= 0.0f) {
+				dust.model.Draw(rc);
+			}
 		}
 	}
 }

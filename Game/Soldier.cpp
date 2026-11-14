@@ -3,6 +3,7 @@
 #include "Player.h"
 #include "EnemyBullet.h"
 #include "EffectManager.h"
+#include "SoundList.h"
 #include "MathUtil.h"
 #include "ObjectNames.h"
 
@@ -66,6 +67,14 @@ namespace
 
 	const float SHOT_INTERVAL = 1.1f;
 	const float FIRST_SHOT_DELAY = 0.5f;
+	const float SHOT_VOLUME = 0.5f;
+	const float SHOT_SOUND_RANGE = 3500.0f;
+	const float ALERT_VOLUME = 0.9f;
+	const float ALERT_SOUND_RANGE = 3500.0f;
+	const float STEP_INTERVAL = 0.533f;
+	const float STEP_FIRST_RATE = 0.3f;
+	const float STEP_VOLUME = 0.8f;
+	const float STEP_SOUND_RANGE = 1600.0f;
 	const float SHOT_FACING_ANGLE = 12.0f;
 	const float SHOT_SPREAD = 0.035f;
 	const int SHOT_DAMAGE = 10;
@@ -191,7 +200,23 @@ void Soldier::UpdateAnimation()
 		m_model.PlayAnimation(next, ANIMATION_BLEND_TIME);
 		m_currentAnimation = next;
 	}
-	m_model.SetAnimationSpeed(next == enAnimationClip_Walk ? speed / WALK_SPEED : 1.0f);
+	float animationSpeed = next == enAnimationClip_Walk ? speed / WALK_SPEED : 1.0f;
+	m_model.SetAnimationSpeed(animationSpeed);
+	UpdateFootstep(next == enAnimationClip_Walk, animationSpeed);
+}
+
+void Soldier::UpdateFootstep(bool isWalking, float animationSpeed)
+{
+	if (!isWalking) {
+		m_stepTimer = STEP_INTERVAL * STEP_FIRST_RATE;
+		return;
+	}
+	m_stepTimer -= g_gameTime->GetFrameDeltaTime() * animationSpeed;
+	if (m_stepTimer > 0.0f) {
+		return;
+	}
+	m_stepTimer += STEP_INTERVAL;
+	SoundList::PlayAt(SoundId::SoldierStep, STEP_VOLUME, m_position, STEP_SOUND_RANGE);
 }
 
 void Soldier::UpdateStuck(float deltaTime)
@@ -453,6 +478,7 @@ void Soldier::ChangeState(EnState state)
 	m_lostTimer = 0.0f;
 	m_waitTimer = 0.0f;
 	if (state == enState_Attack) {
+		SoundList::PlayAt(SoundId::EnemyAlert, ALERT_VOLUME, m_position, ALERT_SOUND_RANGE);
 		m_shotTimer = FIRST_SHOT_DELAY;
 		m_isAttackMoving = false;
 		m_attackTimer = ATTACK_FIRST_HOLD_TIME;
@@ -472,13 +498,13 @@ Vector3 Soldier::GetEyePosition() const
 Vector3 Soldier::GetPlayerAimPosition() const
 {
 	Vector3 aim = m_player->GetPosition();
-	aim.y += m_player->IsDiving() ? DIVING_AIM_HEIGHT : PLAYER_AIM_HEIGHT;
+	aim.y += m_player->IsUnderground() ? DIVING_AIM_HEIGHT : PLAYER_AIM_HEIGHT;
 	return aim;
 }
 
 bool Soldier::CanSeePlayer()
 {
-	if (m_player == nullptr || m_player->IsDead() || m_player->IsDiving()) {
+	if (m_player == nullptr || m_player->IsDead() || m_player->IsUnderground()) {
 		return false;
 	}
 
@@ -537,7 +563,7 @@ bool Soldier::IsSightBlocked(const Vector3& start, const Vector3& end) const
 
 bool Soldier::CanSensePlayer() const
 {
-	if (m_player == nullptr || m_player->IsDead() || !m_player->IsDiving()) {
+	if (m_player == nullptr || m_player->IsDead() || !m_player->IsUnderground()) {
 		return false;
 	}
 	Vector3 toPlayer = m_player->GetPosition() - m_position;
@@ -632,6 +658,7 @@ void Soldier::Shoot()
 	if (effect != nullptr) {
 		effect->PlayMuzzleFlash(muzzle, direction, ENEMY_FLASH_SCALE);
 	}
+	SoundList::PlayAt(SoundId::EnemyShot, SHOT_VOLUME, muzzle, SHOT_SOUND_RANGE);
 }
 
 void Soldier::OnDamage()
