@@ -37,8 +37,15 @@
 		#([-3380, -900], [-2600, -1100], [-1650, -480]),
 		#([-1750, 380], [-1450, 950], [-950, 950]),
 		#([700, 750], [1400, 750], [2150, 600]),
-		#([400, -650], [1400, -700], [2100, -600])
+		#([400, -650], [1400, -700], [2100, -600]),
+		#([3120, 480], [3150, 880]),
+		#([3150, 880], [2800, 950], [2450, 1000]),
+		#([3150, 880], [3340, 1000]),
+		#([3150, 880], [3080, 1230], [2720, 1250])
 	)
+	global g_stageExit = [2720, 1250]
+	global G_PROP_SCALE_MIN = 0.8
+	global G_PROP_SCALE_MAX = 1.25
 	global g_playerStart = [-3950, -1250]
 
 	fn segDist p a b =
@@ -325,31 +332,24 @@
 	bakeAtOrigin gateObj
 	gateObj.material = matWood
 
-	local holeY = 380.0
-	local holeX = gateX - 220.0
-	while (caveSDF holeX holeY) < 120.0 and holeY > 0.0 do holeY -= 20.0
-
 	local playerStart = Point name:"PlayerStart" pos:[g_playerStart.x * G_SCALE, g_playerStart.y * G_SCALE, 60] size:120 box:true cross:false
-	local hole = Point name:"Hole_Stage1" pos:[holeX * G_SCALE, holeY * G_SCALE, 0] size:150 box:true cross:true
 
 	local root = Dummy name:"Stage1" pos:[0,0,0] boxsize:[200,200,200]
-	for o in #(floorObj, shellObj, gateObj, desertObj, barrier, playerStart, hole) do o.parent = root
+	local stageExit = Point name:"StageExit" pos:[g_stageExit.x * G_SCALE, g_stageExit.y * G_SCALE, 0] size:150 box:true cross:true
+	for o in #(floorObj, shellObj, gateObj, desertObj, barrier, playerStart, stageExit) do o.parent = root
 
 	local lightData = #(
 		#("Light_Daylight", [-4250, -1250], 260),
-		#("Light_Lamp", [-3100, 250], 200),
-		#("Light_Lamp", [-2600, -150], 200),
-		#("Light_Lamp", [-2780, -650], 200),
-		#("Light_Lamp", [-1650, -150], 200),
-		#("Light_Lamp", [-900, 650], 200),
-		#("Light_Lamp", [-650, 50], 200),
-		#("Light_Lamp", [100, -550], 200),
-		#("Light_Lamp", [100, 50], 200),
-		#("Light_Lamp", [1000, 250], 200),
-		#("Light_Lamp", [1500, -300], 200),
-		#("Light_Lamp", [2200, 50], 200),
-		#("Light_Lamp", [2350, -520], 200),
-		#("Light_Lamp", [3050, -200], 200)
+		#("Light_Lamp", [-3420, -900], 200),
+		#("Light_Lamp", [-2950, -350], 200),
+		#("Light_Lamp", [-2100, -150], 200),
+		#("Light_Lamp", [-1450, 250], 200),
+		#("Light_Lamp", [-700, -300], 200),
+		#("Light_Lamp", [350, -150], 200),
+		#("Light_Lamp", [1300, 150], 200),
+		#("Light_Lamp", [1900, -250], 200),
+		#("Light_Lamp", [2680, -150], 200),
+		#("Light_Lamp", [2950, 250], 200)
 	)
 	local lightReport = #()
 	for d in lightData do
@@ -382,6 +382,8 @@
 		#([3050, -200], #(#("Prop_Crate", 0, 0, -20), #("Prop_Drum", 120, 60, 0)))
 	)
 	local propReport = #()
+	local scaledProps = #("Prop_Crate", "Prop_WoodBarrel", "Prop_Drum", "Prop_DrumRusty", "Prop_JerrycanGreen", "Prop_JerrycanRed")
+	seed 4242
 	for cluster in propClusters do
 	(
 		local center = cluster[1]
@@ -392,13 +394,25 @@
 			local wy = center.y * G_SCALE + item[3]
 			local wz = (floorHeight (wx / G_SCALE) (wy / G_SCALE)) * G_SCALE - 2.0 + (if item.count >= 5 then item[5] else 0.0)
 			local p = Point name:item[1] pos:[0, 0, 0] size:60 box:true cross:false
+			if (findItem scaledProps item[1]) > 0 do
+			(
+				local s = random G_PROP_SCALE_MIN G_PROP_SCALE_MAX
+				p.scale = [s, s, s]
+			)
 			rotate p (angleAxis item[4] [0, 0, 1])
 			p.pos = [wx, wy, wz]
 			p.parent = root
 		)
 	)
 
+	local propPoints = for o in objects where (classOf o == Point) and (matchPattern o.name pattern:"Prop_*") collect [o.pos.x / G_SCALE, o.pos.y / G_SCALE]
 	local rep = createFile (projDir + "MaxData\\stage_report.txt")
+	for d in lightData where d[1] == "Light_Lamp" do
+	(
+		local nearest = 1e9
+		for pp in propPoints do nearest = amin nearest (length (pp - d[2]))
+		format "lamp % nearest prop:% caveSDF:%\n" d[2] nearest (caveSDF d[2].x d[2].y) to:rep
+	)
 	for r in propReport do format "prop cluster % sdf:%\n" r[1] r[2] to:rep
 	for r in lightReport do format "% % sdf:% height:%\n" r[1] r[2] r[3] r[4] to:rep
 	for yy = 19 to -22 by -1 do
@@ -412,7 +426,7 @@
 		format "sight guard->% blocked:%\n" s (sightBlocked guardPos s) to:rep
 	format "Floor faces: %\n" (polyop.getNumFaces floorObj) to:rep
 	format "Wall faces: %\n" (polyop.getNumFaces shellObj) to:rep
-	format "Gate x: %  Hole: %, %\n" gateX holeX holeY to:rep
+	format "Gate x: %  StageExit: % caveSDF:%\n" gateX g_stageExit (caveSDF g_stageExit.x g_stageExit.y) to:rep
 
 	saveMaxFile outFile quiet:true
 	format "Saved: %\n" outFile to:rep

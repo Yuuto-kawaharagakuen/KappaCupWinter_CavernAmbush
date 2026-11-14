@@ -130,3 +130,38 @@ for ($i = 1; $i -le 4; $i++) {
 }
 $g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 255, 40, 30))), $cx - 4, $cy - 4, 8, 8)
 Save-Png $bmp $g "UI_Scope"
+
+function New-ButtonIcon([string]$name, [string]$label, [int]$r, [int]$gr, [int]$b, [bool]$isTrigger) {
+	$bmp, $g = New-Canvas 96 96
+	$g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
+	$fill = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(235, $r, $gr, $b))
+	$edge = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(255, 245, 240, 230)), 5
+	if ($isTrigger) {
+		$path = New-Object System.Drawing.Drawing2D.GraphicsPath
+		$path.AddLine(20, 86, 76, 86)
+		$path.AddLine(76, 86, 80, 34)
+		$path.AddBezier(80, 34, 78, 10, 18, 10, 16, 34)
+		$path.AddLine(16, 34, 20, 86)
+		$path.CloseFigure()
+		$g.FillPath($fill, $path)
+		$g.DrawPath($edge, $path)
+		$fontSize = 26
+		$textY = 36
+	}
+	else {
+		$g.FillEllipse($fill, 8, 8, 80, 80)
+		$g.DrawEllipse($edge, 8, 8, 80, 80)
+		$fontSize = 40
+		$textY = 22
+	}
+	$font = New-Object System.Drawing.Font "Arial", $fontSize, ([System.Drawing.FontStyle]::Bold), ([System.Drawing.GraphicsUnit]::Pixel)
+	$format = New-Object System.Drawing.StringFormat
+	$format.Alignment = [System.Drawing.StringAlignment]::Center
+	$g.DrawString($label, $font, [System.Drawing.Brushes]::White, (New-Object System.Drawing.RectangleF 0, $textY, 96, 60), $format)
+	Save-Png $bmp $g $name
+}
+
+New-ButtonIcon "UI_ButtonB" "B" 200 45 40 $false
+New-ButtonIcon "UI_ButtonX" "X" 40 95 200 $false
+New-ButtonIcon "UI_ButtonLT" "LT" 70 70 78 $true
+New-ButtonIcon "UI_ButtonRT" "RT" 70 70 78 $true

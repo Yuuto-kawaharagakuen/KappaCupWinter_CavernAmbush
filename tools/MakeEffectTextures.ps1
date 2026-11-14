@@ -99,6 +99,47 @@ public static class EffectTextureMaker
 		}
 		Save(path, p);
 	}
+
+	static double ValueNoise(double x, double y, int s)
+	{
+		int ix = (int)Math.Floor(x);
+		int iy = (int)Math.Floor(y);
+		double fx = x - ix;
+		double fy = y - iy;
+		fx = fx * fx * (3.0 - 2.0 * fx);
+		fy = fy * fy * (3.0 - 2.0 * fy);
+		double a = Hash(ix * 57 + iy * 131, s);
+		double b = Hash((ix + 1) * 57 + iy * 131, s);
+		double c = Hash(ix * 57 + (iy + 1) * 131, s);
+		double d = Hash((ix + 1) * 57 + (iy + 1) * 131, s);
+		return Lerp(Lerp(a, b, fx), Lerp(c, d, fx), fy);
+	}
+
+	public static void Dust(string path)
+	{
+		const int DUST_SIZE = 128;
+		using (Bitmap bmp = new Bitmap(DUST_SIZE, DUST_SIZE, PixelFormat.Format32bppArgb))
+		{
+			for (int y = 0; y < DUST_SIZE; y++)
+			{
+				for (int x = 0; x < DUST_SIZE; x++)
+				{
+					double dx = (x + 0.5) / DUST_SIZE * 2.0 - 1.0;
+					double dy = (y + 0.5) / DUST_SIZE * 2.0 - 1.0;
+					double r = Math.Sqrt(dx * dx + dy * dy);
+					double noise = ValueNoise(x / 10.0, y / 10.0, 3) * 0.6 + ValueNoise(x / 4.0, y / 4.0, 11) * 0.4;
+					double falloff = Clamp(1.0 - r);
+					double alpha = Clamp(falloff * falloff * (0.55 + noise * 0.9));
+					double shade = 0.85 + noise * 0.15;
+					int red = (int)(225 * shade);
+					int green = (int)(200 * shade);
+					int blue = (int)(165 * shade);
+					bmp.SetPixel(x, y, Color.FromArgb((int)(alpha * 255.0), red, green, blue));
+				}
+			}
+			bmp.Save(path, ImageFormat.Png);
+		}
+	}
 }
 '@
 
@@ -116,3 +157,7 @@ $flame = Join-Path $srcDir "FX_MuzzleFlame.png"
 foreach ($path in @($star, $flame)) {
 	& $texconv -vflip -f BC7_UNORM -srgb -y -w 256 -h 256 -o $outDir $path | Out-Null
 }
+
+$dust = Join-Path $srcDir "FX_SandDust.png"
+[EffectTextureMaker]::Dust($dust)
+& $texconv -vflip -f BC7_UNORM -srgb -y -o $outDir $dust | Out-Null
