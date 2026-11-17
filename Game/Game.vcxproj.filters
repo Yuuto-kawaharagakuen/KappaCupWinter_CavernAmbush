@@ -25,6 +25,8 @@
     <ClCompile Include="EnemyBase.cpp" />
     <ClCompile Include="EnemyBullet.cpp" />
     <ClCompile Include="Soldier.cpp" />
+    <ClCompile Include="Boss.cpp" />
+    <ClCompile Include="Grenade.cpp" />
     <ClCompile Include="PlayerUI.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -50,6 +52,8 @@
     <ClInclude Include="ObjectNames.h" />
     <ClInclude Include="SoundList.h" />
     <ClInclude Include="Soldier.h" />
+    <ClInclude Include="Boss.h" />
+    <ClInclude Include="Grenade.h" />
     <ClInclude Include="PlayerUI.h" />
   </ItemGroup>
 </Project>

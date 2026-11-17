@@ -127,7 +127,7 @@ void EnemyBase::UpdateDeath()
 
 	m_model.SetPosition(position);
 	m_model.SetRotation(rotation);
-	m_model.SetScale(Vector3::One);
+	m_model.SetScale({ m_modelScale, m_modelScale, m_modelScale });
 	m_model.Update();
 
 	if (sinkRate >= 1.0f) {
@@ -138,13 +138,15 @@ void EnemyBase::UpdateDeath()
 void EnemyBase::UpdateModel()
 {
 	float deltaTime = g_gameTime->GetFrameDeltaTime();
-	if (m_charaCon.IsOnGround()) {
-		m_moveSpeed.y = 0.0f;
+	if (UseGravity()) {
+		if (m_charaCon.IsOnGround()) {
+			m_moveSpeed.y = 0.0f;
+		}
+		m_moveSpeed.y -= GRAVITY * deltaTime;
 	}
-	m_moveSpeed.y -= GRAVITY * deltaTime;
 	m_position = m_charaCon.Execute(m_moveSpeed, deltaTime);
 
-	float scale = m_damageFlashTimer > 0.0f ? DAMAGE_SCALE : 1.0f;
+	float scale = m_modelScale * (m_damageFlashTimer > 0.0f ? DAMAGE_SCALE : 1.0f);
 	m_model.SetPosition(m_position);
 	m_model.SetRotation(m_rotation);
 	m_model.SetScale({ scale, scale, scale });

@@ -235,6 +235,8 @@
     <ClCompile Include="EnemyBase.cpp" />
     <ClCompile Include="EnemyBullet.cpp" />
     <ClCompile Include="Soldier.cpp" />
+    <ClCompile Include="Boss.cpp" />
+    <ClCompile Include="Grenade.cpp" />
     <ClCompile Include="PlayerUI.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Player.cpp" />
@@ -263,6 +265,8 @@
     <ClInclude Include="ObjectNames.h" />
     <ClInclude Include="SoundList.h" />
     <ClInclude Include="Soldier.h" />
+    <ClInclude Include="Boss.h" />
+    <ClInclude Include="Grenade.h" />
     <ClInclude Include="PlayerUI.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="Player.h" />

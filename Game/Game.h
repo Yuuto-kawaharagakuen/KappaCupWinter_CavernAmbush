@@ -7,6 +7,7 @@ class PlayerUI;
 class Fade;
 class GameFlow;
 class EffectManager;
+class Boss;
 
 class Game : public IGameObject
 {
@@ -26,11 +27,15 @@ private:
 	void UpdateGameOver();
 	void UpdateStageClear();
 	void UpdateExit();
+	void UpdateBgm();
 
 	Player* m_player = nullptr;
+	SoundSource* m_bgm = nullptr;
+	float m_bgmVolume = 0.0f;
 	Stage* m_stage = nullptr;
 	PlayerUI* m_playerUI = nullptr;
 	EffectManager* m_effectManager = nullptr;
+	Boss* m_boss = nullptr;
 	Fade* m_fade = nullptr;
 	GameFlow* m_flow = nullptr;
 	bool m_isGameOver = false;

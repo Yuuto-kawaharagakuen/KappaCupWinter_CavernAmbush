@@ -20,6 +20,9 @@ enum class SoundId
 	MenuCursor,
 	MenuDecide,
 	SoldierStep,
+	GameBGM,
+	GrenadeExplode,
+	BossJet,
 	Num,
 };
 
@@ -53,6 +56,9 @@ namespace SoundList
 			"MenuCursor",
 			"MenuDecide",
 			"SoldierStep",
+			"GameBGM",
+			"GrenadeExplode",
+			"BossJet",
 		};
 		static_assert(sizeof(names) / sizeof(names[0]) == static_cast<int>(SoundId::Num), "SoundId and names mismatch");
 		for (int i = 0; i < static_cast<int>(SoundId::Num); i++) {

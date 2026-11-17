@@ -13,6 +13,7 @@ namespace ObjectName
 	const char* const PLAYER_UI = "playerUI";
 	const char* const ENEMY = "enemy";
 	const char* const ENEMY_BULLET = "enemyBullet";
+	const char* const GRENADE = "grenade";
 	const char* const SAND_BULLET = "sandBullet";
 	const char* const EFFECT_MANAGER = "effectManager";
 }

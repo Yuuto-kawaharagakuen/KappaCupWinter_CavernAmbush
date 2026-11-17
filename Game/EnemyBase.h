@@ -23,6 +23,14 @@ public:
 	{
 		return m_hp <= 0;
 	}
+	int GetHp() const
+	{
+		return m_hp;
+	}
+	int GetMaxHp() const
+	{
+		return m_maxHp;
+	}
 	bool HitTest(const Vector3& start, const Vector3& end, float radius, float& hitRate) const;
 	bool Damage(int amount, const Vector3& direction);
 
@@ -36,6 +44,11 @@ protected:
 	}
 	virtual void OnDamage() {}
 	virtual void OnDead() {}
+	virtual bool UseGravity() const
+	{
+		return true;
+	}
+	virtual void UpdateDeath();
 	Vector3 GetForward() const;
 
 	CharacterController m_charaCon;
@@ -44,9 +57,9 @@ protected:
 	Quaternion m_rotation = Quaternion::Identity;
 	Vector3 m_moveSpeed = Vector3::Zero;
 	float m_deathAnimationTime = 0.0f;
+	float m_modelScale = 1.0f;
 
 private:
-	void UpdateDeath();
 	void UpdateModel();
 
 	Player* m_worldPlayer = nullptr;

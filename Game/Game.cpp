@@ -9,6 +9,8 @@
 #include "Fade.h"
 #include "Soldier.h"
 #include "EnemyBullet.h"
+#include "Boss.h"
+#include "Grenade.h"
 #include "EffectManager.h"
 #include "SoundList.h"
 #include "ObjectNames.h"
@@ -20,6 +22,12 @@ namespace
 	const float FLOOR_RAY_BOTTOM = -600.0f;
 	const float SPAWN_HEIGHT_OFFSET = 5.0f;
 	const float EXIT_RADIUS = 120.0f;
+	const float BGM_VOLUME = 0.35f;
+	const float BGM_FADE_IN_TIME = 1.5f;
+	const float BGM_FADE_OUT_TIME = 1.0f;
+	const float BOSS_TEST_X = 500.0f;
+	const float BOSS_TEST_Z = 0.0f;
+	const float BOSS_TEST_YAW = -90.0f;
 	struct SoldierData
 	{
 		float x;
@@ -57,6 +65,7 @@ Game::Game()
 
 Game::~Game()
 {
+	SoundList::StopLoop(m_bgm);
 	DeleteGO(m_player);
 	DeleteGO(m_stage);
 	DeleteGO(m_playerUI);
@@ -69,6 +78,10 @@ Game::~Game()
 		DeleteGO(bullet);
 		return true;
 	});
+	QueryGOs<Grenade>(ObjectName::GRENADE, [](Grenade* grenade) {
+		DeleteGO(grenade);
+		return true;
+	});
 }
 
 bool Game::Start()
@@ -76,6 +89,7 @@ bool Game::Start()
 	m_fade = Fade::Get();
 	m_flow = GameFlow::Get();
 	SoundList::Init();
+	m_bgm = SoundList::PlayLoop(SoundId::GameBGM, 0.0f);
 
 	m_stage = NewGO<Stage>(0, ObjectName::STAGE);
 	m_stage->Load(m_flow->GetStageLevelPath());
@@ -98,11 +112,16 @@ bool Game::Start()
 		soldier->AddPatrolPoint(patrol);
 	}
 
+	m_boss = NewGO<Boss>(0, ObjectName::ENEMY);
+	m_boss->SetPosition(FindFloorPosition(BOSS_TEST_X, BOSS_TEST_Z, fallbackY));
+	m_boss->SetYaw(BOSS_TEST_YAW);
+
 	return true;
 }
 
 void Game::Update()
 {
+	UpdateBgm();
 	if (m_isStageClear) {
 		UpdateStageClear();
 		return;
@@ -115,7 +134,27 @@ void Game::Update()
 	if (!m_player->IsWorldPaused()) {
 		m_clearTime += g_gameTime->GetFrameDeltaTime();
 	}
+	if (m_boss != nullptr && m_boss->IsDefeated()) {
+		m_isStageClear = true;
+		m_fade->StartFadeOut();
+		return;
+	}
 	UpdateExit();
+}
+
+void Game::UpdateBgm()
+{
+	if (m_bgm == nullptr) {
+		return;
+	}
+	float deltaTime = g_gameTime->GetFrameDeltaTime();
+	if (m_isStageClear || m_isGameOver) {
+		m_bgmVolume = max(0.0f, m_bgmVolume - BGM_VOLUME * deltaTime / BGM_FADE_OUT_TIME);
+	}
+	else {
+		m_bgmVolume = min(BGM_VOLUME, m_bgmVolume + BGM_VOLUME * deltaTime / BGM_FADE_IN_TIME);
+	}
+	m_bgm->SetVolume(m_bgmVolume);
 }
 
 void Game::UpdateExit()
