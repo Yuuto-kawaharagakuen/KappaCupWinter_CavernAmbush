@@ -30,6 +30,8 @@
   - 隊長: 雑魚兵の基本の動きに加えて、グレネードと物陰からのリーン撃ちを使う（雑魚兵と別種類として数えるため）
   - 雑魚兵はグレネードを使わない
   - ボス: 基本ずっと空中に浮いてライフルで撃つ。たまにグレネードを連続で投げる。プレイヤーはそれまでと同じくオブジェクトに隠れ、潜行も使いながら下から撃つ
+  - ボス部屋での1対1では、前半はジェットパックで空中から攻撃し、HPが半分になるとジェットパックが不調・故障するムービーを入れて、そこから地上戦にする（ステージ1に仮置きしている間は入れない）
+  - ボスの大きさは雑魚兵より一回り大きい（`Boss.cpp` の `MODEL_SCALE` 1.25）
 - 敵: 雑魚兵 / 盾持ち兵（正面からの弾を無効化）/ 隊長 / ボス（賊のボス。賞金首ではない）
   - 敵は4種類とも入れる（3種類以上がBランクの条件）
 - HPが0でゲームオーバー、ボス撃破でクリア
@@ -51,6 +53,7 @@
 - コミット: タスクにOKが出たとき、または指示があったとき（日本語のメッセージ）
 - Push: 指示があったとき、または一日の作業が終わるとき
 - 一日の作業が終わったら、下の「作業ログ」にその日やったことを追記し、不要になったメモリを掃除してから Push する
+- 新しいチャットでは、まずこのファイル全体と、作業ログの最新の日の「次回」「未決定」「保留」を読んでから始める。見た目や演出は何度も試して戻すことが多いので、試して外した案（作業ログや各節に書いてある）を繰り返さない
 
 ## 環境
 - エンジン: k2Engine（C++ / DirectX12）。`k2Engine/` と `k2EngineLow/` はエンジン本体
@@ -60,6 +63,14 @@
   - エンジン由来の警告 LNK4099 は無視してよい
 - Git: PATHに無いので Fork 同梱の git を使う
   `%LOCALAPPDATA%\Fork\gitInstance\<version>\cmd\git.exe`
+
+## プレイ動画の確認と編集（`tools\video\`）
+- 笠井が OBS の動画（`Videos\OBS\*.mp4`）をくれたら、コマを画像にして中身を確かめてから直す。ffmpeg は無いので、Media Foundation を使う自作の道具を使う
+- `tools\video\Build.ps1` で `%TEMP%\CavernAmbushVideoTools\` に exe を作る（Visual Studio の cl を使う）
+  - `FrameDump.exe <動画> <出力の頭> <開始秒> <終了秒> [間隔秒] [縮小率]` → BMP を書き出す。`tools\video\MakeContactSheet.ps1 -Folder <フォルダ> -Output <png>` で一覧の画像にして Read で見る（切り替えなど速い動きは 0.1 秒おきで見る）
+  - `CutJoin.exe <動画>` でキーフレームの位置を出す。`CutJoin.exe <入力> <出力> <消す開始秒> <消す終了秒>` は再圧縮なしで切り取る（キーフレームでしか切れない）
+  - `SpeedUp.exe <入力> <出力> <開始秒> <終了秒> <倍率>` は区間を倍速にする（倍率 0 で区間を消す）。再圧縮するので任意の位置で切れる。速くした区間の音は無音
+  - デコーダーは 1080 の映像を 1088 行に詰めて出すので、色（UV）の位置はバッファの大きさから求める（1080 として扱うと緑の帯と色ずれが出る）
 
 ## ステージ・モデルの書き出し（3ds Max 2026 のバッチ）
 - `3dsmaxbatch.exe tools\3dsMax\MakeStage1.ms` → `MaxData\Stage1.max` を生成（形・縮尺はスクリプト冒頭の定数）
@@ -82,6 +93,11 @@
   - `ExportTkm.ms -mxsString file:Swat.max -mxsString names:SwatSoldier -mxsString flat:true`（頂点の多いモデルは flat:true にする。false だと読み込み時の法線スムージングで Debug がほぼ止まる）
   - `ExportTka.ms -mxsString file:Swat.max -mxsString root:SWAT -mxsString clips:Swat_Idle:0:59,Swat_Walk:100:131,Swat_Shoot:200:209,Swat_Death:300:347,Swat_Look:400:489,Swat_Aim:500:529` → `Game\Assets\animData\`（構え・撃つは IK で両手を銃に合わせている）
   - ProOptimizer などモディファイアのボタン操作は、バッチでも `select` → `max modify mode` → `modPanel.setCurrentObject` してからなら動く
+- ボス: 元データは `Downloads\Tactical_Soldier_02.Fbx(1).fbx`（CGTrader、Character Creator の人物。テクスチャは同じ場所の `.fbm`）
+  - `MakeBossMixamo.ms` → `MaxData\Mixamo\Boss_ForMixamo.fbx`（表情の形・骨・帽子を消した T ポーズ）を Mixamo に上げて骨を付け、`Downloads` に `Rifle Aiming Idle` `Firing Rifle` `Toss Grenade` `Falling Back Death` `Hit Reaction`（FBX Binary・With Skin・30fps）を落とす（見本キャラのまま落とさないよう、ボスを上げた状態で落とす）
+  - `tools\MakeBossTextures.ps1`（体と銃のテクスチャを `MaxData\textures\boss\` に `Boss_` を付けてコピーし、装備用の色を自作）→ `MakeBoss.ms` で `Boss.max`（体・服・ヘルメット＋ゴーグル・厚いベスト＋弾倉ポーチ・グレネードのベルト・ジェットパックを1つのメッシュにまとめ、Skin Wrap で骨を付け直す。装備は T ポーズの座標で作り、骨に 100% で固定。銃は `Downloads\m4-carabine` を 22% に削って右手に固定。5本のアニメーションを 0/100/200/300/500 フレームから並べる。銃口とジェットの噴射口に `BossMuzzle`・`BossJetL/R` の Point を骨の子として置く）
+  - `ExportTkm.ms ... names:Boss flat:true`、`ExportTka.ms -mxsString file:Boss.max -mxsString root:BossRoot -mxsString clips:Boss_Idle:0:52,Boss_Shoot:100:107,Boss_Throw:200:266,Boss_Death:300:425,Boss_Hit:500:528`。テクスチャは体と銃を 1K、装備と目を 512 の DDS にする（Normal は `-srgb` なし）
+  - グレネード: `MakeGrenade.ms` → `Grenade.max` → `names:Grenade`
 - 陣地のランタン: `MakePropTextures.ps1`（金属・ガラス・ロープのテクスチャ）→ `MakeLantern.ms` で `Lantern.max` → `names:Prop_Lantern,Prop_LanternGlass,Prop_LanternRope` で書き出す。原点はガラスの中心（ロープは下端、長さ100）。ゲームでは `Light_Lamp` の位置に置き、天井までロープを伸ばす（`Stage::AddLantern`）。ガラスは `Emissive.fx` で光らせる
 - UI の画像は `tools\MakeUISprites.ps1` で作る（`Game\Assets\sprite\UI_*.DDS`）。ボタンの絵 `UI_ButtonB/X/LT/RT` も自作（Xbox の配色）
 - HUD は画面の上側にまとめる（HP は左上、弾数は右上、潜行中の表示は上の真ん中）。操作ガイド（`PlayerUI::UpdateGuide`、弾数の下に上から並べる）: 今できる操作だけを「文字＋ボタンの絵」で出す。地上は 射撃 RT（弾0で薄く）・スコープ LT・潜る B、潜行中は リロード X（満タンなら出さない、リロード中は薄く）・浮上する B。切り替え中と死亡時は消す。文字は右寄せで、幅は文字数×`GUIDE_CHAR_WIDTH` で見積もっている
@@ -104,6 +120,7 @@
 - 潜行中のカプセルは、エンジンの CharacterController が「下向きにゆるく傾いた天井」を壁と見なさずにすり抜けるので、`Player::IsDiveHeadBlocked` で体の中心の上（高さ60まで、半径10の球）をスイープして止め、当たったら X か Z だけの移動に切り替える（`LimitDiveMove`）。抜け道（`MakeStage1.ms` の `G_TUNNEL_HALF_WIDTH` 95・`G_TUNNEL_HEIGHT` 135）は横をまっすぐ立てた箱形にして、ゆるい天井の斜面を作らない。壁モデルの厚み（Shell 40）の分だけ天井は低くなり、床からの隙間は約101（潜行中のカプセル80は通れ、浮上中の170は通れない）。広げすぎると洞窟の壁ごと削れて抜け道に見えなくなる
 - 保険として、真上に天井が無い位置（＝マップの外）に出たら直前の位置に戻す（`Player::HasCeilingAbove`・`m_safePosition`）
 - 音は `Game\Assets\sound\<SoundId の名前>.wav`（16bit PCM）。`SoundList.h` の `SoundId` と名前の表に足すだけで、最初に鳴らすときにまとめて登録される。ファイルが無い音は鳴らないだけで落ちない。`Play`（2D）／`PlayAt`（カメラからの距離で音量を下げる）／`PlayLoop`・`StopLoop`（ループ。鳴り終わると消える普通の音と違い、自分で止めて消す）
+- ゲーム中の BGM `GameBGM`（`Downloads\BGM.wav`、約139秒）は `Game` がループで鳴らす（`Game::UpdateBgm`。音量 0.35、始めに1.5秒でフェードイン、クリア・ゲームオーバーの暗転に合わせて1秒でフェードアウト、`Game` を消すときに止める）
 - 兵士の足音 `SoldierStep` は1歩分の短い音で、歩きアニメーション（1周 1.067 秒で2歩）に合わせて 0.533 秒×アニメ速度ごとに `PlayAt` で鳴らす（`Soldier::UpdateFootstep`、範囲 1600）。何歩も続く録音なら1歩だけ切り出して置く
 - 音の取り込みは `tools\ConvertSound.ps1 -Source <mp3かwav> -Name <SoundIdの名前>`（mp3 は WinRT の MediaTranscoder で wav にし、24bit などは fmt と data だけの 16bit に直す。ffmpeg は無い）。効果音ラボはスクリプトからのダウンロードを 403 で弾くので、ダウンロードは笠井がブラウザで行う
 - LB2・RB2（アナログのトリガー）は、エンジンが「0 でなければ押している」と判定するので、押し始めと離すときに値がちらついて `IsTrigger` が何回も立つ。1回押しを数えたいときは、少しの間離れていないと「離した」と見なさない処理を挟む（`Player::UpdateShotTrigger`）
@@ -197,7 +214,15 @@
 - 被写界深度（遠くをぼかす）を有効に（エンジンの変更は上の節。今は 1200〜2500 で強さ 0.3）。終了時にデストラクタで落ちていたのを直した
 - UI: 状態に合わせた操作ガイド（ボタンの絵を自作）、HP・弾数・ガイドを画面の上側へ、「潜行中 射撃不可」を大きく。Select（スペース）で被ダメージのデバッグ処理を削除
 - 動画の編集（指定区間の切り取り・倍速）は Media Foundation の自作ツールで対応した（スクラッチに置いてあり、リポジトリには入れていない）
-- 次回: 兵士の足音の素材（`SoldierStep`、笠井が探す）。浮上・潜行の演出と操作ガイドの見た目は笠井のプレイ確認待ち。α版の締め切り（11/16）に向けて通しプレイの確認
-- 未決定: Notion のステータス（砂の盛り上がり・ステージ1の配置・障害物モデル・全滅で進める・クリアタイムは笠井のOK待ち。全滅で進める仕様は抜け道に変わった）、「敵の撃破エフェクトの制作」タスクの扱い、「潜れない場所の判定」（保留中）、スコープ倍率の仕様（上の節は1.5倍、コードは1.25倍）、ランタンを自作の仮モデルのままにするか素材に差し替えるか、使わなくなった黒い穴のモデル（`MakeHole.ms`・`StageHole.tkm`）を消すか、効果音を提出用データにどう入れるか
 - 外部レビュー（2026-11-14 に笠井が受けた）: 砂から浮上するときに、砂の粒子が舞うエフェクトがあるとより良い。Nova Shader（Unity 用のエフェクト向けシェーダー）を勧められたが、k2Engine では使えないので、同じ考え方（ふわっと漂う細かい砂ぼこり）を自前で作る。ほかに、光るもの（ランタン）を奥へ向かって置いていけば、UI で「奥へ進め」と書かなくてもプレイヤーは光の方へ進む／ランタンの真下に物があると陰影に違和感が出るので避ける、とのこと
-- 保留: CREDITS.md に素材の配布ページを追記（木箱と樽・ドラム缶と携行缶・UAZ・砂袋・Ammos.fbx・効果音ラボ・AudioStock の発砲音。リンク待ち）、企画書のファイル名と中身にフルネーム・学校名が入っている件（笠井の判断待ち）
+
+### 2026-11-15〜11-18
+- ゲーム中の BGM（`GameBGM`、`Game::UpdateBgm`。音量は笠井の指示で 0.35）
+- 被写界深度の実装方法と仕組みの解説ページ（Artifact）を作った。`hexaBlur.fx` の `BLUR_TEX_W/H` も 1280×720 のままで、1920×1080 ではボケが約1.5倍になっている（見た目は OK なのでそのまま）
+- Claude と Visual Studio のキャッシュを整理（`Game\.vs`・`%TEMP%\VC++`・`VSTelem`、約6GB）
+- ボス: 最初の候補（MetaHuman 用の服だけの FBX）は頭・テクスチャ・アニメーションが無く不採用。Tactical Soldier 02 を Mixamo で骨付けし、ヘルメット・ベスト・ポーチ・グレネードのベルト・ジェットパック・銃（m4-carabine）を付けた（手順は上の節）。ゲーム側は `Boss`（浮遊・移動・ライフル4連射・グレネード3連投・被弾・撃破で落下→クリア）と `Grenade`。今はステージ1の真ん中の広間（`Game.cpp` の `BOSS_TEST_X/Z`）に仮置き。1.25倍に拡大。HP半分でのムービー＋地上戦は途中まで書いたが、ボス部屋の1対1で入れることにして外した
+- `EnemyBase` に `UseGravity`・差し替えられる `UpdateDeath`・`m_modelScale`・`GetHp/GetMaxHp` を追加
+- Notion: 「ボス：モデル・アニメーションの組み込み」を完了、ボスのほかのタスクと「BGMの制作」は進行中（プレイ確認待ち）
+- 次回: ステージ2の制作（Notion の「ステージ2・ボス部屋のモデルの制作」）。ボスの動き・強さ・炎の見た目は笠井のプレイ確認待ち。兵士の足音の素材（`SoldierStep`）
+- 未決定: Notion の期日の組み直し（ボスを先にやったので、隊長・ボスのタスクの期日が実際とずれている）、Notion のステータス（砂の盛り上がり・ステージ1の配置・障害物モデル・全滅で進める・クリアタイムは笠井のOK待ち）、「敵の撃破エフェクトの制作」タスクの扱い、「潜れない場所の判定」（保留中）、スコープ倍率の仕様（上の節は1.5倍、コードは1.25倍）、ランタンを自作の仮モデルのままにするか、黒い穴のモデル（`MakeHole.ms`・`StageHole.tkm`）を消すか、効果音を提出用データにどう入れるか、グレネードの爆発音とジェットの音（`GrenadeExplode`・`BossJet`、ファイル待ち）
+- 保留: CREDITS.md に素材の配布ページを追記（木箱と樽・ドラム缶と携行缶・UAZ・砂袋・Ammos.fbx・効果音ラボ・AudioStock の発砲音・Tactical Soldier 02・m4-carabine・BGM。リンク待ち）、企画書のファイル名と中身にフルネーム・学校名が入っている件（笠井の判断待ち）、ルートにある `k2Engine 被写界深度ガイド.md`（コミットするか笠井の判断待ち）
