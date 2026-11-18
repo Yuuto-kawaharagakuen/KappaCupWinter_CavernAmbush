@@ -26,7 +26,11 @@
 - ステージ1 → ステージ2（隊長がカギを落とす）→ ボス部屋（ジェットパックで浮遊するボス）
   - ステージ1とステージ2は、門の横から入る潜ったときだけ通れる抜け道でつながっていて、兵士を倒さなくても行き来できる（ステージ2からも同じ道で戻れる）。抜け道は途中で3つに分かれ、正解の1本だけがステージ2に続く（ほかは行き止まり）
   - ボス部屋に入るには、ステージ1・2の兵士を全員倒し、さらに隊長のカギを持っている必要がある
-  - ステージ2ができるまでは、正解の抜け道の奥（`StageExit`）に着くとクリア画面に行く（仮）
+  - ステージ1の正解の抜け道の奥（`StageExit`）に潜って着くとステージ2へ。ステージ2の奥の扉（`BossDoor`）に浮上して近づくとボス部屋へ（今はカギと全滅の条件なし。戻る抜け道の出口 `StageBack` は置いただけ）
+  - ステージ2は、ステージ1から来た抜け道（戻る道）の中で潜ったまま始まり、そこから出てきて攻略を始める（tkl の Point `PlayerStartDive`、`Player::SetStartDiving`）
+  - ステージ2: 賊の本拠地の奥。大きな広間＋周りの部屋（入口・兵舎・倉庫・北東の部屋・隊長の部屋）、部屋どうしをつなぐ潜ったときだけ通れる抜け道が2本
+  - ボス部屋は別のマップ（`BossRoom.tkl`）。扉を通ると暗転してムービーを流し、その間に読み込む（ムービーはまだ）。ボス部屋で倒れたらリトライはできず、タイトルへ戻るだけ（`GameFlow::CanRetry`）
+  - リトライは倒れたステージの最初から（ステージ1には戻らない）。合計タイムには倒れるまでの時間も足す（`GameFlow::AddPlayTime`）
   - 隊長: 雑魚兵の基本の動きに加えて、グレネードと物陰からのリーン撃ちを使う（雑魚兵と別種類として数えるため）
   - 雑魚兵はグレネードを使わない
   - ボス: 基本ずっと空中に浮いてライフルで撃つ。たまにグレネードを連続で投げる。プレイヤーはそれまでと同じくオブジェクトに隠れ、潜行も使いながら下から撃つ
@@ -45,7 +49,7 @@
 - 操作はコントローラーのみ（g_pad）。キーボード・マウスは使わない
 - コードを書いたら、何を実装したか・作った関数と役割を簡潔に説明する
 - コードを書いたら Debug|x64 でビルドしてエラーがないことを確認してから渡す
-- プレイ確認と素材探しは笠井が行う。アニメーションの実装は任されることがある
+- プレイ確認は笠井が行う。素材探しは Claude が行ってもよいが、使う前（ダウンロードする前）に配布元・ライセンス・ファイルを笠井に見せて確認をもらう。アニメーションの実装は任されることがある
 - Notion のタスクは、笠井の「OK」が出てからステータスを「完了」にする
 - Notion の子タスクは 1日3コマ（午前 9:00〜12:00／午後 13:00〜17:00／夜 19:00〜22:00）で時刻付きの期日を入れる。作業2日ごとに何も入れない予備日を1日置く（10/25 から3日おき）。タスクが予備日をまたがないように組む
 - Notion の親タスク（サブアイテムを持つタスク）の期日は「最後のサブアイテムの終了日 + 1日」にする
@@ -76,12 +80,13 @@
 - `3dsmaxbatch.exe tools\3dsMax\MakeStage1.ms` → `MaxData\Stage1.max` を生成（形・縮尺はスクリプト冒頭の定数）
 - `3dsmaxbatch.exe tools\3dsMax\ExportTkm.ms -mxsString file:Stage1.max -mxsString names:Floor_Stage1,Wall_Stage1,Gate_Stage1,Desert_Stage1` → tkm を書き出し、各 tkm に `tkmOptimizer.exe <in> <out>` をかける
 - `3dsmaxbatch.exe tools\3dsMax\ExportTkl.ms -mxsString file:Stage1.max -mxsString level:Stage1` → `Game\Assets\level3D\Stage1.tkl`
-- `MakeStage1.ms` の主な定数: `g_playerStart`（開始位置）、`g_diveTunnels`（潜ったときだけ通れる抜け道。後ろの4本が門の横から北へ入ってステージ2へ向かう分かれ道）、`g_stageExit`（正解の抜け道の奥。tkl の Point `StageExit`）、`lightData`（`Light_Daylight`／`Light_Lamp` の Point → ゲームでポイントライト。ランプは入口から門の横の抜け道の入口まで、進む道に沿って約600〜700おきに10個並べ、光で奥へ誘導する。ポイントライトは影を落とさないので、ランプの真下には小物を置かない（`stage_report.txt` に各ランプから一番近い小物までの距離が出る。200以上離す））、`EntranceBarrier`（透明な壁）。座標は Max の生の値 × `G_SCALE` = ワールド、ゲームでは (x, z, -y)
+- `MakeStage1.ms` の主な定数: `g_playerStart`（開始位置）、`g_diveTunnels`（潜ったときだけ通れる抜け道。後ろの4本が門の横（北の端）から入って門より X＋ 側（奥）へ抜け、そこで3つに分かれてステージ2へ向かう分かれ道。そのため `G_GRID_MAX` の x を 4700 に広げた）、`g_stageExit`（正解の抜け道の奥。tkl の Point `StageExit`）、`lightData`（`Light_Daylight`／`Light_Lamp` の Point → ゲームでポイントライト。ランプは入口から門の横の抜け道の入口まで、進む道に沿って約600〜700おきに10個並べ、光で奥へ誘導する。ポイントライトは影を落とさないので、ランプの真下には小物を置かない（`stage_report.txt` に各ランプから一番近い小物までの距離が出る。200以上離す））、`EntranceBarrier`（透明な壁）。座標は Max の生の値 × `G_SCALE` = ワールド、ゲームでは (x, z, -y)
 - 床と外の砂漠のどちらかを変えたら、継ぎ目がそろうように両方を書き出す
+- ステージ2とボス部屋: `MakeStage2.ms`・`MakeBossRoom.ms`（共通の関数は `StageCommon.ms`。ステージ1は前のまま `MakeStage1.ms`）。形は冒頭の `g_caveEllipses`（部屋）・`g_caveCapsules`（通路）・`g_diveTunnels`・`g_plateaus`（高台：中心・半径・高さ）。高台は今は置いていない（`g_plateaus` は空。崖にすると CharacterController が床を突き抜け、ゆるい坂の丘にすると潜行中の盛り上がりが坂で浮いたので外した。床の崖・別メッシュの垂直な岩の台・中に当たり判定だけの台を重ねる案も外した）。書き出すのは `Floor_/Wall_/Gate_Stage2`・`Floor_/Wall_/Gate_BossRoom` と tkl の `Stage2`・`BossRoom`。地図と各点の天井までの高さは `MaxData\stage2_report.txt`・`bossroom_report.txt`（コミットしない）。tkl の Point は `PlayerStart`（潜ったまま始めるなら `PlayerStartDive`）・`StageBack`・`BossDoor`・`BossStart`・`Light_Lamp`・`Light_LampRed`（少し赤みの強いランプ）
 - テクスチャは `texconv.exe -vflip -f BC7_UNORM -srgb -y -o Game\Assets\modelData <画像>` で DDS にする（k2 のツールは `C:\my\02_Git\01_k2Engine\GameTemplate\tools\3dsMaxScripts\`）
 - 書き出し後にできる `MaxData\export_report.txt` と `*_backup.max` は消す
 - プレイヤーの銃: `Downloads\m4a4.fbx` を `tools\3dsMax\MakeM4.ms` で `M4.max` にして `names:M4A4 flat:true` で書き出す（原点はスコープの接眼部、テクスチャは `MaxData\textures\m4\`）
-- 潜行中の砂の盛り上がり: `MakeSandMound.ms`（平たい楕円の盛り上がり＋前と横に押しのけた砂のふち＋ノイズのひび。後ろに長い。平らなつばの部分は削って、盛り上がっているところだけ残す（`keepHeight`）。`names:SandMound` で書き出す）。MAXScript では `-(x)^2` が「(-x) の2乗」になるので、マイナスは `-1.0 * x * x` と書く
+- 潜行中の砂の盛り上がり: `MakeSandMound.ms`（平たい楕円の盛り上がり＋前と横に押しのけた砂のふち＋ノイズのひび。後ろに長い。平らなつばの部分は削って、盛り上がっているところだけ残す（`keepHeight`）。`names:SandMound` で書き出す）。α版の形のまま使う。坂に合わせて傾ける処理・ふちの下に広がるすそ・まん丸の形・尾を引く形・小さなこぶを重ねて揺らす凹凸型・床と同じ UV と法線マップは試したが、どれも外した（2026-11-18）。MAXScript では `-(x)^2` が「(-x) の2乗」になるので、マイナスは `-1.0 * x * x` と書く
 - 潜る／浮上する切り替え（`Player::UpdateCamera`）は 1.6 秒（`CAMERA_BLEND_TIME`。0.8 秒は速すぎ、2.4 秒は遅すぎた）。潜るときは銃を浮上のときの逆の動きで下げて消す（進み具合 30% まで、`GUN_LOWER_RATE`。銃は沈む目線 `m_eyeHeight` に付いて動く）。始めから徐々に暗転し、進み具合 45〜55% は真っ暗、そこから明るくなる（`Player::GetSwitchDarkness`・`PlayerUI::UpdateSwitchFade`）。真っ暗の真ん中（時間順の進み具合 `GetSwitchProgress` の `SWITCH_CUT` 0.5）で一人称と三人称を切る。潜るときは一人称のまま目線が床まで沈み、切ったあと三人称のカメラが近くから後ろへ引き、盛り上がりがポンと出る（`EaseOutBack`）。浮上するときは盛り上がりが膨らんで揺れ、切った瞬間に砂が弾け、一人称の目線が床から跳ね上がる。切り替えの前後は小さく揺らす。暗転なしで一方向になめらかに移すだけの動きや、砂の画像で画面を覆う演出も試したが、今の形（暗転＋沈む／跳ね上がる動き）に落ち着いた
 - 潜る／浮上するときの砂しぶきの粒: `MakeSandGrain.ms` で `SandGrain.max` → `names:SandGrain flat:true` で書き出す（テクスチャは床の砂と同じ）
 - 浮上するときに舞う砂ぼこり: `tools\MakeEffectTextures.ps1` が `FX_SandDust.png`（ふちがぼけた丸、アルファ付き）も作る → `MakeSandDust.ms` で `SandDust.max`（20×20 の板1枚、+Z 向き）→ `names:SandDust flat:true` で書き出す。ゲームでは `SandDust.fx`（半透明、色と透明度を定数バッファで粒ごとに渡す）で描き、毎フレームカメラに向ける
@@ -118,7 +123,8 @@
 - 撃ったときと着弾のエフェクトは `EffectManager`（Game が作る、`EffectManager::Get()`）にまとめている
 - 砂袋の壁（`Prop_Sandbag*`）は LevelRender に任せず `Stage::AddSandbag` で読む。見た目はそのまま、当たり判定は形に沿って並べた縦の箱（`SANDBAG_SHAPES`、Max のローカル座標の線分＋厚み・高さ）にしている。メッシュの当たり判定だと、丸い袋の斜面をキャラが登ってしまい、細かい三角形との判定でとても重くなるため
 - 潜行中のカプセルは、エンジンの CharacterController が「下向きにゆるく傾いた天井」を壁と見なさずにすり抜けるので、`Player::IsDiveHeadBlocked` で体の中心の上（高さ60まで、半径10の球）をスイープして止め、当たったら X か Z だけの移動に切り替える（`LimitDiveMove`）。抜け道（`MakeStage1.ms` の `G_TUNNEL_HALF_WIDTH` 95・`G_TUNNEL_HEIGHT` 135）は横をまっすぐ立てた箱形にして、ゆるい天井の斜面を作らない。壁モデルの厚み（Shell 40）の分だけ天井は低くなり、床からの隙間は約101（潜行中のカプセル80は通れ、浮上中の170は通れない）。広げすぎると洞窟の壁ごと削れて抜け道に見えなくなる
-- 保険として、真上に天井が無い位置（＝マップの外）に出たら直前の位置に戻す（`Player::HasCeilingAbove`・`m_safePosition`）
+- 保険として、真上に天井が無い位置（＝マップの外）に出たら、または最後に立っていた地面より 400 以上下に落ちたら、その地面の位置に戻す（`Player::HasCeilingAbove`・`m_safePosition`・`FALL_RESET_DEPTH`）
+- CharacterController は、法線と上向きの角度が54°未満を床、54〜126°を壁として扱い、床は体の中心から下へ調べる。床の面が急に高くなっていると（高さマップの崖など）中心が面の下に入って突き抜けるので、段差の当たり判定は垂直の壁を持つ物体で作るか、54°未満のゆるい坂にする
 - 音は `Game\Assets\sound\<SoundId の名前>.wav`（16bit PCM）。`SoundList.h` の `SoundId` と名前の表に足すだけで、最初に鳴らすときにまとめて登録される。ファイルが無い音は鳴らないだけで落ちない。`Play`（2D）／`PlayAt`（カメラからの距離で音量を下げる）／`PlayLoop`・`StopLoop`（ループ。鳴り終わると消える普通の音と違い、自分で止めて消す）
 - ゲーム中の BGM `GameBGM`（`Downloads\BGM.wav`、約139秒）は `Game` がループで鳴らす（`Game::UpdateBgm`。音量 0.35、始めに1.5秒でフェードイン、クリア・ゲームオーバーの暗転に合わせて1秒でフェードアウト、`Game` を消すときに止める）
 - 兵士の足音 `SoldierStep` は1歩分の短い音で、歩きアニメーション（1周 1.067 秒で2歩）に合わせて 0.533 秒×アニメ速度ごとに `PlayAt` で鳴らす（`Soldier::UpdateFootstep`、範囲 1600）。何歩も続く録音なら1歩だけ切り出して置く
@@ -223,6 +229,14 @@
 - ボス: 最初の候補（MetaHuman 用の服だけの FBX）は頭・テクスチャ・アニメーションが無く不採用。Tactical Soldier 02 を Mixamo で骨付けし、ヘルメット・ベスト・ポーチ・グレネードのベルト・ジェットパック・銃（m4-carabine）を付けた（手順は上の節）。ゲーム側は `Boss`（浮遊・移動・ライフル4連射・グレネード3連投・被弾・撃破で落下→クリア）と `Grenade`。今はステージ1の真ん中の広間（`Game.cpp` の `BOSS_TEST_X/Z`）に仮置き。1.25倍に拡大。HP半分でのムービー＋地上戦は途中まで書いたが、ボス部屋の1対1で入れることにして外した
 - `EnemyBase` に `UseGravity`・差し替えられる `UpdateDeath`・`m_modelScale`・`GetHp/GetMaxHp` を追加
 - Notion: 「ボス：モデル・アニメーションの組み込み」を完了、ボスのほかのタスクと「BGMの制作」は進行中（プレイ確認待ち）
-- 次回: ステージ2の制作（Notion の「ステージ2・ボス部屋のモデルの制作」）。ボスの動き・強さ・炎の見た目は笠井のプレイ確認待ち。兵士の足音の素材（`SoldierStep`）
-- 未決定: Notion の期日の組み直し（ボスを先にやったので、隊長・ボスのタスクの期日が実際とずれている）、Notion のステータス（砂の盛り上がり・ステージ1の配置・障害物モデル・全滅で進める・クリアタイムは笠井のOK待ち）、「敵の撃破エフェクトの制作」タスクの扱い、「潜れない場所の判定」（保留中）、スコープ倍率の仕様（上の節は1.5倍、コードは1.25倍）、ランタンを自作の仮モデルのままにするか、黒い穴のモデル（`MakeHole.ms`・`StageHole.tkm`）を消すか、効果音を提出用データにどう入れるか、グレネードの爆発音とジェットの音（`GrenadeExplode`・`BossJet`、ファイル待ち）
-- 保留: CREDITS.md に素材の配布ページを追記（木箱と樽・ドラム缶と携行缶・UAZ・砂袋・Ammos.fbx・効果音ラボ・AudioStock の発砲音・Tactical Soldier 02・m4-carabine・BGM。リンク待ち）、企画書のファイル名と中身にフルネーム・学校名が入っている件（笠井の判断待ち）、ルートにある `k2Engine 被写界深度ガイド.md`（コミットするか笠井の判断待ち）
+
+### 2026-11-18（ステージ2・ボス部屋）
+- ステージ2とボス部屋のマップを 3ds Max のスクリプトで作った（`MakeStage2.ms`・`MakeBossRoom.ms`、共通の関数は `StageCommon.ms`）。ステージ2は大きな広間＋入口・兵舎・倉庫・北東の部屋・隊長の部屋、潜ったときだけ通れる抜け道が2本、奥に扉（`BossDoor`）。ボス部屋は別のマップで、ボスは tkl の `BossStart` から出す
+- ステージの流れ: `GameFlow` にステージ1・2・ボス部屋の tkl を並べ、`StageExit`（潜って着く）・`BossDoor`（浮上して近づく）で次へ。ステージ2は戻る抜け道の中で潜ったまま始まる（`PlayerStartDive`・`Player::SetStartDiving`）。ボス部屋ではリトライなし（`GameFlow::CanRetry`・`GameOver`）。リトライ前の時間も合計タイムに足す（`AddPlayTime`）
+- 高台: 床の崖・別メッシュの岩の台・当たり判定だけの台・ゆるい坂の丘を試したが、床の突き抜けや潜行中の盛り上がりの浮きが直らず、高台そのものをやめた。保険として、最後に立った地面から 400 以上落ちたら戻す（`FALL_RESET_DEPTH`）
+- 潜行中の砂の盛り上がり: 坂に合わせて傾ける・すそ・尾を引く形・こぶを揺らす凹凸型を試したが、α版の形に戻した（試した案は上の節）
+- ステージ1: 奥の UAZ を壁から約100離した。ステージ2へ向かう抜け道を、門の横から門より X＋ 側（奥）へ抜けて3つに分かれる形にした（`G_GRID_MAX` の x を 4700 に）
+- 素材探しは Claude が行い、ダウンロードの前に笠井が確認する決まりにした。抜け道の入口を隠す物として Poly Haven（CC0）の ammo_box・wooden_military_crate・old_military_crate・stick_grenade・machete・hand_truck を `Downloads\PolyHaven\` に落とした（まだ取り込んでいない）
+- 次回: 抜け道の入口のカモフラージュ（上の6つを取り込み、ふたを開けた木箱に弾薬缶と手榴弾を敷き詰め、閉じた木箱を積み、なたを立てかけ、台車を入口の前に。斜めに潜って通れるすき間を残し、当たり判定は縦の箱）。ステージ2の敵と小物の配置。ボスの動き・強さ・炎の見た目は笠井のプレイ確認待ち。兵士の足音の素材（`SoldierStep`）
+- 未決定: Notion の期日の組み直し（ボスを先にやったので、隊長・ボスのタスクの期日が実際とずれている）、Notion のステータス（砂の盛り上がり・ステージ1の配置・障害物モデル・全滅で進める・クリアタイムは笠井のOK待ち）、「敵の撃破エフェクトの制作」タスクの扱い、「潜れない場所の判定」（保留中）、スコープ倍率の仕様（上の節は1.5倍、コードは1.25倍）、ランタンを自作の仮モデルのままにするか、黒い穴のモデル（`MakeHole.ms`・`StageHole.tkm`）を消すか、効果音を提出用データにどう入れるか、グレネードの爆発音とジェットの音（`GrenadeExplode`・`BossJet`、ファイル待ち）、ステージ2・ボス部屋のプレイ確認（扉・戻る抜け道 `StageBack` はまだ置いただけ）
+- 保留: CREDITS.md に素材の配布ページを追記（木箱と樽・ドラム缶と携行缶・UAZ・砂袋・Ammos.fbx・効果音ラボ・AudioStock の発砲音・Tactical Soldier 02・m4-carabine・BGM。リンク待ち）、企画書のファイル名と中身にフルネーム・学校名が入っている件（笠井の判断待ち）、ルートにある `k2Engine 被写界深度ガイド.md`（コミットするか笠井の判断待ち）、`tools\video\`（動画の道具。コミットするか笠井の判断待ち）。CREDITS.md に Poly Haven（CC0、クレジットは不要だが書いておく）を足す
