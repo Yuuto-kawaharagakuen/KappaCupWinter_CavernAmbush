@@ -6,8 +6,11 @@ namespace
 {
 	const char* const STAGE_LEVEL_PATHS[] = {
 		"Assets/level3D/Stage1.tkl",
+		"Assets/level3D/Stage2.tkl",
+		"Assets/level3D/BossRoom.tkl",
 	};
 	const int STAGE_COUNT = sizeof(STAGE_LEVEL_PATHS) / sizeof(STAGE_LEVEL_PATHS[0]);
+	const int BOSS_STAGE = STAGE_COUNT - 1;
 }
 
 GameFlow* GameFlow::Get()
@@ -35,9 +38,14 @@ void GameFlow::Retry()
 	m_retryCount++;
 }
 
+void GameFlow::AddPlayTime(float time)
+{
+	m_totalTime += time;
+}
+
 bool GameFlow::ClearCurrentStage(float stageTime)
 {
-	m_totalTime += stageTime;
+	AddPlayTime(stageTime);
 	m_hasKey = false;
 	if (m_currentStage + 1 >= STAGE_COUNT) {
 		return true;
@@ -45,6 +53,11 @@ bool GameFlow::ClearCurrentStage(float stageTime)
 	m_currentStage++;
 	m_retryStage = m_currentStage;
 	return false;
+}
+
+bool GameFlow::CanRetry() const
+{
+	return m_currentStage != BOSS_STAGE;
 }
 
 const char* GameFlow::GetStageLevelPath() const

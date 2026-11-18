@@ -25,6 +25,10 @@ public:
 	{
 		m_position = position;
 	}
+	void SetStartDiving(bool isStartDiving)
+	{
+		m_isStartDiving = isStartDiving;
+	}
 	const Vector3& GetForward() const
 	{
 		return m_forward;
@@ -172,5 +176,6 @@ private:
 	float m_baseViewAngle = 0.0f;
 	Vector3 m_gunPosition = Vector3::Zero;
 	Quaternion m_gunRotation = Quaternion::Identity;
+	bool m_isStartDiving = false;
 
 };

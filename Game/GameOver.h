@@ -30,5 +30,6 @@ private:
 	float m_timer = 0.0f;
 	int m_select = enMenu_Retry;
 	bool m_isStickTilted = false;
+	bool m_canRetry = true;
 	bool m_isDecided = false;
 };

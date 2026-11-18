@@ -14,6 +14,7 @@ namespace
 	const float DAYLIGHT_RANGE = 1700.0f;
 	const float DAYLIGHT_POW = 1.6f;
 	const Vector3 LAMP_COLOR = { 5.2f, 4.2f, 3.0f };
+	const Vector3 LAMP_RED_COLOR = { 5.6f, 3.8f, 2.5f };
 	const float LAMP_RANGE = 700.0f;
 	const float LAMP_POW = 2.0f;
 	const char* const LANTERN_FRAME_PATH = "Assets/modelData/Prop_Lantern.tkm";
@@ -86,8 +87,28 @@ void Stage::Load(const char* levelFilePath)
 			m_playerStartPosition = objData.position;
 			return true;
 		}
+		if (objData.EqualObjectName(L"PlayerStartDive")) {
+			m_playerStartPosition = objData.position;
+			m_isPlayerStartDiving = true;
+			return true;
+		}
 		if (objData.EqualObjectName(L"StageExit")) {
 			m_exitPosition = objData.position;
+			m_hasExit = true;
+			return true;
+		}
+		if (objData.EqualObjectName(L"BossDoor")) {
+			m_bossDoorPosition = objData.position;
+			m_hasBossDoor = true;
+			return true;
+		}
+		if (objData.EqualObjectName(L"BossStart")) {
+			m_bossStartPosition = objData.position;
+			m_hasBossStart = true;
+			return true;
+		}
+		if (objData.EqualObjectName(L"StageBack")) {
+			m_backPosition = objData.position;
 			return true;
 		}
 		if (objData.EqualObjectName(L"EntranceBarrier")) {
@@ -158,7 +179,7 @@ void Stage::AddPointLight(const LevelObjectData& objData)
 		light->SetAffectPowParam(DAYLIGHT_POW);
 	}
 	else {
-		light->SetColor(LAMP_COLOR);
+		light->SetColor(wcscmp(objData.name, L"Light_LampRed") == 0 ? LAMP_RED_COLOR : LAMP_COLOR);
 		light->SetRange(LAMP_RANGE);
 		light->SetAffectPowParam(LAMP_POW);
 		m_lampPositions.push_back(objData.position);

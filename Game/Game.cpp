@@ -25,9 +25,9 @@ namespace
 	const float BGM_VOLUME = 0.35f;
 	const float BGM_FADE_IN_TIME = 1.5f;
 	const float BGM_FADE_OUT_TIME = 1.0f;
-	const float BOSS_TEST_X = 500.0f;
-	const float BOSS_TEST_Z = 0.0f;
-	const float BOSS_TEST_YAW = -90.0f;
+	const int SOLDIER_STAGE = 0;
+	const float BOSS_START_YAW = -90.0f;
+	const float BOSS_DOOR_RADIUS = 220.0f;
 	struct SoldierData
 	{
 		float x;
@@ -97,11 +97,26 @@ bool Game::Start()
 
 	m_player = NewGO<Player>(0, ObjectName::PLAYER);
 	m_player->SetPosition(m_stage->GetPlayerStartPosition());
+	m_player->SetStartDiving(m_stage->IsPlayerStartDiving());
 
 	m_playerUI = NewGO<PlayerUI>(1, ObjectName::PLAYER_UI);
 	m_playerUI->SetPlayer(m_player);
 
 	float fallbackY = m_stage->GetPlayerStartPosition().y;
+	if (m_flow->GetCurrentStage() == SOLDIER_STAGE) {
+		SpawnSoldiers(fallbackY);
+	}
+	if (m_stage->HasBossStart()) {
+		m_boss = NewGO<Boss>(0, ObjectName::ENEMY);
+		m_boss->SetPosition(m_stage->GetBossStartPosition());
+		m_boss->SetYaw(BOSS_START_YAW);
+	}
+
+	return true;
+}
+
+void Game::SpawnSoldiers(float fallbackY)
+{
 	for (const auto& data : SOLDIERS) {
 		Vector3 start = FindFloorPosition(data.x, data.z, fallbackY);
 		Vector3 patrol = FindFloorPosition(data.patrolX, data.patrolZ, fallbackY);
@@ -111,12 +126,6 @@ bool Game::Start()
 		soldier->AddPatrolPoint(start);
 		soldier->AddPatrolPoint(patrol);
 	}
-
-	m_boss = NewGO<Boss>(0, ObjectName::ENEMY);
-	m_boss->SetPosition(FindFloorPosition(BOSS_TEST_X, BOSS_TEST_Z, fallbackY));
-	m_boss->SetYaw(BOSS_TEST_YAW);
-
-	return true;
 }
 
 void Game::Update()
@@ -159,14 +168,29 @@ void Game::UpdateBgm()
 
 void Game::UpdateExit()
 {
-	Vector3 toExit = m_stage->GetExitPosition() - m_player->GetPosition();
-	toExit.y = 0.0f;
-	if (toExit.Length() > EXIT_RADIUS || !m_player->IsDiving() || m_player->IsSwitching()) {
+	if (m_player->IsSwitching()) {
+		return;
+	}
+	bool isExit = false;
+	if (m_stage->HasExit() && m_player->IsDiving()) {
+		isExit = IsNear(m_stage->GetExitPosition(), EXIT_RADIUS);
+	}
+	if (m_stage->HasBossDoor() && !m_player->IsDiving()) {
+		isExit = isExit || IsNear(m_stage->GetBossDoorPosition(), BOSS_DOOR_RADIUS);
+	}
+	if (!isExit) {
 		return;
 	}
 
 	m_isStageClear = true;
 	m_fade->StartFadeOut();
+}
+
+bool Game::IsNear(const Vector3& position, float radius) const
+{
+	Vector3 diff = position - m_player->GetPosition();
+	diff.y = 0.0f;
+	return diff.Length() <= radius;
 }
 
 void Game::UpdateStageClear()
@@ -195,6 +219,7 @@ void Game::UpdateGameOver()
 	}
 
 	if (m_fade->IsBlack()) {
+		m_flow->AddPlayTime(m_clearTime);
 		NewGO<GameOver>(0, ObjectName::GAME_OVER);
 		m_fade->StartFadeIn();
 		DeleteGO(this);

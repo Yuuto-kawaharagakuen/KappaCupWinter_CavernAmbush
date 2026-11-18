@@ -42,6 +42,10 @@ GameOver::~GameOver()
 bool GameOver::Start()
 {
 	m_fade = Fade::Get();
+	m_canRetry = GameFlow::Get()->CanRetry();
+	if (!m_canRetry) {
+		m_select = enMenu_Title;
+	}
 
 	m_background.Init("Assets/sprite/UI_White.DDS", SCREEN_WIDTH, SCREEN_HEIGHT);
 	m_background.SetMulColor(BACKGROUND_COLOR);
@@ -96,6 +100,9 @@ void GameOver::Update()
 
 void GameOver::UpdateSelect()
 {
+	if (!m_canRetry) {
+		return;
+	}
 	int move = 0;
 	if (g_pad[0]->IsTrigger(enButtonUp)) {
 		move = -1;
@@ -137,6 +144,9 @@ void GameOver::Render(RenderContext& rc)
 		return;
 	}
 	for (int i = 0; i < enMenu_Num; i++) {
+		if (i == enMenu_Retry && !m_canRetry) {
+			continue;
+		}
 		m_menuText[i].Draw(rc);
 	}
 	m_cursorText.Draw(rc);

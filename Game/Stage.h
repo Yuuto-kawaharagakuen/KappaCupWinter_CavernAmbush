@@ -13,9 +13,37 @@ public:
 	{
 		return m_playerStartPosition;
 	}
+	bool IsPlayerStartDiving() const
+	{
+		return m_isPlayerStartDiving;
+	}
 	const Vector3& GetExitPosition() const
 	{
 		return m_exitPosition;
+	}
+	bool HasExit() const
+	{
+		return m_hasExit;
+	}
+	const Vector3& GetBossDoorPosition() const
+	{
+		return m_bossDoorPosition;
+	}
+	bool HasBossDoor() const
+	{
+		return m_hasBossDoor;
+	}
+	const Vector3& GetBossStartPosition() const
+	{
+		return m_bossStartPosition;
+	}
+	bool HasBossStart() const
+	{
+		return m_hasBossStart;
+	}
+	const Vector3& GetBackPosition() const
+	{
+		return m_backPosition;
 	}
 
 private:
@@ -57,5 +85,12 @@ private:
 	BoxCollider m_barrierCollider;
 	RigidBody m_barrierRigidBody;
 	Vector3 m_playerStartPosition = Vector3::Zero;
+	bool m_isPlayerStartDiving = false;
 	Vector3 m_exitPosition = Vector3::Zero;
+	bool m_hasExit = false;
+	Vector3 m_bossDoorPosition = Vector3::Zero;
+	bool m_hasBossDoor = false;
+	Vector3 m_bossStartPosition = Vector3::Zero;
+	bool m_hasBossStart = false;
+	Vector3 m_backPosition = Vector3::Zero;
 };

@@ -27,6 +27,8 @@ private:
 	void UpdateGameOver();
 	void UpdateStageClear();
 	void UpdateExit();
+	bool IsNear(const Vector3& position, float radius) const;
+	void SpawnSoldiers(float fallbackY);
 	void UpdateBgm();
 
 	Player* m_player = nullptr;

@@ -10,6 +10,7 @@
 namespace
 {
 	const float START_YAW = 90.0f;
+	const float FALL_RESET_DEPTH = 400.0f;
 	const float CAPSULE_RADIUS = 30.0f;
 	const float CAPSULE_HEIGHT = 110.0f;
 	const float DIVE_CAPSULE_HEIGHT = 20.0f;
@@ -147,6 +148,11 @@ bool Player::Start()
 	m_headroomCollider.Create(HEADROOM_CHECK_RADIUS);
 	m_diveHeadCollider.Create(DIVE_HEAD_CHECK_RADIUS);
 	m_safePosition = m_position;
+	if (m_isStartDiving) {
+		m_state = enState_Dive;
+		SetDiveBody(true);
+		m_cameraBlend = 1.0f;
+	}
 	m_ammo = MAX_AMMO;
 	m_hp = MAX_HP;
 	m_yaw = START_YAW;
@@ -569,8 +575,11 @@ void Player::Move()
 			charaCon.SetPosition(m_position);
 		}
 	}
-	if (HasCeilingAbove(m_position)) {
-		m_safePosition = m_position;
+	bool isFallenThrough = m_position.y < m_safePosition.y - FALL_RESET_DEPTH;
+	if (HasCeilingAbove(m_position) && !isFallenThrough) {
+		if (charaCon.IsOnGround()) {
+			m_safePosition = m_position;
+		}
 	}
 	else {
 		m_position = m_safePosition;

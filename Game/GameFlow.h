@@ -8,8 +8,10 @@ public:
 	void StartNewGame();
 	void Retry();
 	bool ClearCurrentStage(float stageTime);
+	void AddPlayTime(float time);
 
 	const char* GetStageLevelPath() const;
+	bool CanRetry() const;
 	int GetCurrentStage() const
 	{
 		return m_currentStage;
