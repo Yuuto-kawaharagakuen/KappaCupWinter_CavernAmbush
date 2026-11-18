@@ -12,7 +12,7 @@
 	global g_fxFile = "C:\\my\\02_Git\\01_k2Engine\\GameTemplate\\tools\\3dsMaxShader\\k2EngineShader.fx"
 
 	global G_GRID_MIN = [-4400, -1800]
-	global G_GRID_MAX = [3700, 1600]
+	global G_GRID_MAX = [4700, 1600]
 	global G_GRID_STEP = 56.0
 	global G_SCALE = 1.071
 	global G_MAX_HEIGHT = 650.0
@@ -38,12 +38,12 @@
 		#([-1750, 380], [-1450, 950], [-950, 950]),
 		#([700, 750], [1400, 750], [2150, 600]),
 		#([400, -650], [1400, -700], [2100, -600]),
-		#([3120, 480], [3150, 880]),
-		#([3150, 880], [2800, 950], [2450, 1000]),
-		#([3150, 880], [3340, 1000]),
-		#([3150, 880], [3080, 1230], [2720, 1250])
+		#([3150, 420], [3750, 420]),
+		#([3750, 420], [3950, 800], [4150, 950]),
+		#([3750, 420], [4000, 80]),
+		#([3750, 420], [4150, 420], [4500, 480])
 	)
-	global g_stageExit = [2720, 1250]
+	global g_stageExit = [4500, 480]
 	global G_PROP_SCALE_MIN = 0.8
 	global G_PROP_SCALE_MAX = 1.25
 	global g_playerStart = [-3950, -1250]
@@ -377,7 +377,7 @@
 		#([1000, 250], #(#("Prop_Crate", 0, 0, 40), #("Prop_WoodBarrel", -115, 35, 0))),
 		#([1500, -300], #(#("Prop_Crate", 0, 0, 35))),
 		#([2200, 50], #(#("Prop_Crate", 0, 0, -15), #("Prop_Drum", 115, 40, 0))),
-		#([2350, -520], #(#("Prop_UAZ", 0, 0, 35), #("Prop_JerrycanGreen", 123, 86, 20), #("Prop_JerrycanRed", 100, 119, -15))),
+		#([2330, -380], #(#("Prop_UAZ", 0, 0, 35), #("Prop_JerrycanGreen", 123, 86, 20), #("Prop_JerrycanRed", 100, 119, -15))),
 		#([2500, 100], #(#("Prop_SandbagStraight", 0, 0, 90), #("Prop_SandbagStraight", 0, 0, 90, 48))),
 		#([3050, -200], #(#("Prop_Crate", 0, 0, -20), #("Prop_Drum", 120, 60, 0)))
 	)
@@ -418,7 +418,7 @@
 	for yy = 19 to -22 by -1 do
 	(
 		local line = ""
-		for xx = -44 to 36 do line += (if (caveSDF (xx * 100.0) (yy * 100.0)) > 0 then "#" else (if (tunnelSDF (xx * 100.0) (yy * 100.0)) > 0 then "=" else "."))
+		for xx = -44 to 47 do line += (if (caveSDF (xx * 100.0) (yy * 100.0)) > 0 then "#" else (if (tunnelSDF (xx * 100.0) (yy * 100.0)) > 0 then "=" else "."))
 		format "%\n" line to:rep
 	)
 	local guardPos = [-2200, 0]
